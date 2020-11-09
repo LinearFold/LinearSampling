@@ -1,0 +1,30 @@
+#!/usr/bin/env python2
+
+import gflags as flags
+import subprocess
+import sys
+import os
+
+FLAGS = flags.FLAGS
+
+def setgflags():
+    flags.DEFINE_integer('beam', 100, "set beam size, (DEFAULT=100)", short_name='b')
+    flags.DEFINE_boolean('sharpturn', False, "enable sharp turn in prediction, (DEFAULT=FALSE)")
+    flags.DEFINE_boolean('verbose', False, "print out energy of each loop in the structure, (DEFAULT=FALSE)")
+    flags.DEFINE_integer('sample_number', 10, "sample number, (DEFAULT=10)", short_name='k') 
+    argv = FLAGS(sys.argv)
+
+def main():
+    beamsize = str(FLAGS.beam)
+    is_sharpturn = '1' if FLAGS.sharpturn else '0'
+    is_verbose = '1' if FLAGS.verbose else '0'
+    sample_number = str(FLAGS.sample_number)
+
+    path = os.path.dirname(os.path.abspath(__file__))
+    cmd = ["%s/%s" % (path, ('bin/linearsampling_v')), beamsize, is_sharpturn, is_verbose, sample_number]
+    subprocess.call(cmd, stdin=sys.stdin)
+    
+if __name__ == '__main__':
+    setgflags()
+    main()
+
