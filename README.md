@@ -42,7 +42,7 @@ Enable sharpturn. (default False)
 
 ## Example: Run Predict
 ```
-cat testseq | ./linearsampling -k 1
+cat testseq | ./linearsampling -k 5
 UGAGUUCUCGAUCUCUAAAAUCG
 .(((........)))........
 ........((((.......))))
