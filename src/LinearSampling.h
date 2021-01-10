@@ -102,6 +102,7 @@ public:
     bool no_sharp_turn;
     bool is_verbose;
     int sample_number;
+  bool read_forest;
 
     struct DecoderResult {
         State& viterbi;
@@ -112,11 +113,14 @@ public:
     BeamCKYParser(int beam_size=100,
                   bool nosharpturn=true,
                   bool is_verbose=false,
-                  int sample_number=10);
+                  int sample_number=10,
+		  bool read_forest=false);
 
     DecoderResult parse(string& seq);
 
 private:
+
+  void load_forest();
 
     void get_parentheses(char* result, string& seq);
 

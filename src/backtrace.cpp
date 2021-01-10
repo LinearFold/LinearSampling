@@ -343,7 +343,6 @@ void BeamCKYParser::backtrack(int *next_pair, int *prev_pair, int i, int j, char
 void BeamCKYParser::sample(int *next_pair, int *prev_pair){
     char result[seq_length+1];
 
-    srand (std::chrono::system_clock::now().time_since_epoch().count()); // lhuang: not time(NULL)!
     generators[0] = default_random_engine(rand());
 
     struct timeval parse_starttime, parse_endtime;

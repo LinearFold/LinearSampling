@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <sys/time.h>
 #include <stack>
 #include <tuple>
@@ -130,6 +131,9 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 #ifdef SPECIAL_HP
     v_init_tetra_hex_tri(seq, seq_length, if_tetraloops, if_hexaloops, if_triloops);
 #endif
+
+    if (!read_forest)
+    {
 
     if(seq_length > 0) bestC[0].alpha = 0.0;
     if(seq_length > 1) bestC[1].alpha = 0.0;
@@ -383,6 +387,9 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
             }
         }
     }  // end of for-loo j
+    } // if there is no forest file
+    else  // read forest
+      load_forest();
 
     State& viterbi = bestC[seq_length-1];
 
@@ -402,14 +409,48 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
     return {viterbi, nos_tot, parse_elapsed_time};
 }
 
+void BeamCKYParser::load_forest() {
+  string line, type, ii, jj;
+  int i, j;
+  string alpha;
+  unordered_map<int, State> *states;
+  while (true) {
+    if (!getline(cin, line)) break;
+    istringstream iss(line);
+    iss >> type;
+    if (type == "E") {
+      iss >> jj >> alpha;
+      j = stoi(jj) - 1;
+      bestC[j].alpha = stof(alpha);	
+    }
+    else { // P M M2 Multi
+      iss >> ii >> jj >> alpha;
+      i = stoi(ii) - 1;
+      j = stoi(jj) - 1;
+      if (type == "P")
+	states = bestP;
+      else if (type == "M")
+	states = bestM;
+      else if (type == "M2")
+	states = bestM2;
+      else if (type == "Multi")
+	states = bestMulti; 
+      	
+      states[j][i].alpha = stof(alpha);
+    }      
+  }  
+}
+
 BeamCKYParser::BeamCKYParser(int beam_size,
                              bool nosharpturn,
                              bool verbose,
-                             int samplenumber)
+                             int samplenumber,
+			     bool readforest)
     : beam(beam_size), 
       no_sharp_turn(nosharpturn), 
       is_verbose(verbose),
-      sample_number(samplenumber) {
+      sample_number(samplenumber),
+      read_forest(readforest) {
 #ifdef lv
         initialize();
 #else
@@ -423,6 +464,9 @@ BeamCKYParser::BeamCKYParser(int beam_size,
 
 int main(int argc, char** argv){
 
+  srand(std::chrono::system_clock::now().time_since_epoch().count()); // lhuang: not time(NULL)!
+
+
     struct timeval total_starttime, total_endtime;
     gettimeofday(&total_starttime, NULL);
 
@@ -430,12 +474,14 @@ int main(int argc, char** argv){
     bool sharpturn = false;
     bool is_verbose = false;
     int sample_number = 10;
+    bool read_forest;
 
     if (argc > 1) {
         beamsize = atoi(argv[1]);
         sharpturn = atoi(argv[2]) == 1;
         is_verbose = atoi(argv[3]) == 1;
         sample_number = atoi(argv[4]);
+	read_forest = atoi(argv[5]) == 1;
     }
 
     // variables for decoding
@@ -467,7 +513,7 @@ int main(int argc, char** argv){
             // convert T to U
             replace(seq.begin(), seq.end(), 'T', 'U');
 
-            BeamCKYParser parser(beamsize, !sharpturn, is_verbose, sample_number);
+            BeamCKYParser parser(beamsize, !sharpturn, is_verbose, sample_number, read_forest);
 
             BeamCKYParser::DecoderResult result = parser.parse(seq);
         }
