@@ -464,7 +464,7 @@ BeamCKYParser::BeamCKYParser(int beam_size,
 
 int main(int argc, char** argv){
 
-  srand(std::chrono::system_clock::now().time_since_epoch().count()); // lhuang: not time(NULL)!
+    srand(std::chrono::system_clock::now().time_since_epoch().count()); // lhuang: not time(NULL)!
 
 
     struct timeval total_starttime, total_endtime;

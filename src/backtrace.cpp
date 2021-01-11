@@ -240,7 +240,7 @@ void BeamCKYParser::backtrack_beamM(int *next_pair, int *prev_pair, int i, int j
         iterator = bestM2[j].find(i);
         if(iterator != bestM2[j].end()) {
             accu_alpha = bestM2[j][i].alpha - bestM[j][i].alpha;
-            update_if_better(stateM,accu_alpha, MANNER_M_eq_M2);
+            update_if_better(stateM, accu_alpha, MANNER_M_eq_M2);
         }
         discrete_distribution<> d(stateM.alphalist.begin(), stateM.alphalist.end());
         stateM.distribution = d;
@@ -258,7 +258,8 @@ unsigned long choice(State& state){
 
 void BeamCKYParser::backtrack(int *next_pair, int *prev_pair, int i, int j, char* result, State& state){
     unsigned long index = choice(state);
-    BackPointer backpointer = state.tracelist.at(index);
+     
+    BackPointer backpointer = state.tracelist.at(index); // lhuang: buggy: vector index out of range for empty tracelist
     int p, q, k;
     switch(backpointer.manner) {
         case MANNER_H:
@@ -351,8 +352,15 @@ void BeamCKYParser::sample(int *next_pair, int *prev_pair){
         memset(result, '.', seq_length);
         result[seq_length] = 0;
 
-        backtrack_beamC(next_pair, prev_pair, seq_length-1, result);
-        printf("%s\n", string(result).c_str());
+	try {
+	  backtrack_beamC(next_pair, prev_pair, seq_length-1, result);
+	  printf("%s\n", string(result).c_str());
+	}
+	catch (const out_of_range & err) {
+	  if (is_verbose)
+	    printf("empty tracelist\n");
+	  i--; // NB: hit vector index out of range exception
+	}
     }   
     if(is_verbose){
         gettimeofday(&parse_endtime, NULL);
