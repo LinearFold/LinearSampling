@@ -168,10 +168,10 @@ private:
     unsigned seq_length;
 
     unordered_map<int, State> *bestH, *bestP, *bestM2, *bestMulti, *bestM;
-  unordered_map<int, SampleState> *sampleH, *sampleP, *sampleM2, *sampleMulti, *sampleM;  
-
     State *bestC;
-  unordered_map<int, SampleState> sampleC; // lhuang: special
+
+  unordered_map<int, SampleState> ** samplestates;
+
 
     vector<int> if_tetraloops;
     vector<int> if_hexaloops;

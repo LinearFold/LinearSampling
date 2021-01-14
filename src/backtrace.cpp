@@ -30,7 +30,7 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
     int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
 	
         // C = C + U
-        accu_alpha = bestC[j-1].alpha - localZ;
+    accu_alpha = bestC[j-1].alpha - localZ; // lhuang: j == 0?
         samplestate.append(alphalist, accu_alpha, MANNER_C_eq_C_plus_U);
         // C = C + P
         for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
@@ -184,21 +184,6 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
   samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
 }
 
-SampleState & BeamCKYParser::get_sample_state(int i, int j, Type type) {
-  switch (type) {
-  case TYPE_C:
-    return sampleC[j];
-  case TYPE_P:
-    return sampleP[j][i];
-  case TYPE_M:
-    return sampleM[j][i];
-  case TYPE_M2:
-    return sampleM2[j][i];
-  case TYPE_MULTI:
-    return sampleMulti[j][i];
-  }
-}
-
 State & BeamCKYParser::get_state(int i, int j, Type type) {
   switch (type) {
   case TYPE_C:
@@ -216,7 +201,7 @@ State & BeamCKYParser::get_state(int i, int j, Type type) {
 
 void BeamCKYParser::backtrack(int i, int j, char* result, Type type){
 
-  SampleState& samplestate = get_sample_state(i, j, type);
+  SampleState& samplestate = samplestates[type][j][i]; //get_sample_state(i, j, type);
   
   if (!samplestate.visited) {
     samplestate.visited = true;
@@ -292,13 +277,9 @@ void BeamCKYParser::backtrack(int i, int j, char* result, Type type){
 
 void BeamCKYParser::sample(int sample_number){
 
-  // sampleC = new SampleState[seq_length];
-
-    sampleH = new unordered_map<int, SampleState>[seq_length];
-    sampleP = new unordered_map<int, SampleState>[seq_length];
-    sampleM = new unordered_map<int, SampleState>[seq_length];
-    sampleM2 = new unordered_map<int, SampleState>[seq_length];
-    sampleMulti = new unordered_map<int, SampleState>[seq_length];
+  samplestates = new unordered_map<int, SampleState> * [5]; //[seq_length];
+  for (int i = 0; i < 5; i++)
+    samplestates[i] = new unordered_map<int, SampleState>[seq_length];
 
   char result[seq_length+1];
 

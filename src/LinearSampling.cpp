@@ -91,9 +91,10 @@ void BeamCKYParser::cleanup() {
     delete[] bestM2;  
     delete[] bestMulti;  
 
-    delete[] nucs;  
-}
+    delete[] nucs;
 
+    delete[] samplestates;
+}
 
 BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
     struct timeval parse_starttime, parse_endtime;
