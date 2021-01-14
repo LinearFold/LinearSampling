@@ -82,18 +82,22 @@ struct BackPointer {
 };
 
 
+//#define TEST 
 struct State {
     float alpha;
-    bool visited;
 
-    discrete_distribution<> distribution;
-    vector<BackPointer> tracelist;
-    vector<float> alphalist;
-
-    State(): alpha(VALUE_MIN), visited(false), distribution{}, tracelist{}, alphalist{} {};
+  State(): alpha(VALUE_MIN)
+  {};
 
 };
 
+struct SampleState {
+  bool visited;
+  discrete_distribution<> distribution;
+  vector<BackPointer> tracelist;
+  SampleState(): visited(false), distribution{}, tracelist{}
+  {};
+};
 
 
 class BeamCKYParser {
@@ -113,12 +117,15 @@ public:
     BeamCKYParser(int beam_size=100,
                   bool nosharpturn=true,
                   bool is_verbose=false,
-                  int sample_number=10,
 		  bool read_forest=false);
 
     DecoderResult parse(string& seq);
+    void sample(int sample_number);
 
 private:
+  
+  default_random_engine generator; // for choice
+  int *next_pair, *prev_pair;
 
   void load_forest();
 
@@ -127,8 +134,10 @@ private:
     unsigned seq_length;
 
     unordered_map<int, State> *bestH, *bestP, *bestM2, *bestMulti, *bestM;
+  unordered_map<int, SampleState> *sampleH, *sampleP, *sampleM2, *sampleMulti, *sampleM;  
 
     State *bestC;
+  unordered_map<int, SampleState> sampleC; // lhuang: special
 
     vector<int> if_tetraloops;
     vector<int> if_hexaloops;
@@ -138,46 +147,46 @@ private:
 
     void prepare(unsigned len);
 
-    void postprocess();
+    void cleanup();
 
-    void update_if_better(State &state, float alpha_, Manner manner_) {
+  void update_if_better(SampleState &state, vector <float> & alphalist, float alpha_, Manner manner_) {
       if (alpha_ > th) {
         state.tracelist.push_back(BackPointer(manner_));
-        state.alphalist.push_back(Fast_Exp(alpha_));
+        alphalist.push_back(Fast_Exp(alpha_));
       }
     };
 
-    void update_if_better(State &state, float alpha_, Manner manner_, int split_) {
+    void update_if_better(SampleState &state, vector <float> & alphalist, float alpha_, Manner manner_, int split_) {
       if (alpha_ > th) {
         BackPointer backpointer;
         backpointer.set(manner_, split_);
         state.tracelist.push_back(backpointer);
-        state.alphalist.push_back(Fast_Exp(alpha_));
+        alphalist.push_back(Fast_Exp(alpha_));
       }
     };
 
-    void update_if_better(State &state, float alpha_, Manner manner_, char l1_, int l2_) {
+  void update_if_better(SampleState &state, vector <float> & alphalist, float alpha_, Manner manner_, char l1_, int l2_) {
       if (alpha_ > th) {
         BackPointer backpointer;
         backpointer.set(manner_, l1_, l2_);
         state.tracelist.push_back(backpointer);
-        state.alphalist.push_back(Fast_Exp(alpha_));
+        alphalist.push_back(Fast_Exp(alpha_));
       }
     };
+  
+  void backtrack(int i, int j, char* result, SampleState& state);
 
+    void backtrack_beamC(int j, char* result);
+    void backtrack_beamP(int i, int j, char* result);
+    void backtrack_beamMulti(int i, int j, char* result);
+    void backtrack_beamM2(int i, int j, char* result);
+    void backtrack_beamM(int i, int j, char* result);
+
+  
     float beam_prune(unordered_map<int, State>& beamstep);
     vector<pair<float, int>> scores;
 
     // sampling
-    void sample(int *next_pair, int *prev_pair);
-    void backtrack(int *next_pair, int *prev_pair, int i, int j, char* result, State& state);
-    void fill_alphalist(State& state);
-
-    void backtrack_beamC(int *next_pair, int *prev_pair, int j, char* result);
-    void backtrack_beamP(int *next_pair, int *prev_pair, int i, int j, char* result);
-    void backtrack_beamMulti(int *next_pair, int *prev_pair, int i, int j, char* result);
-    void backtrack_beamM2(int *next_pair, int *prev_pair, int i, int j, char* result);
-    void backtrack_beamM(int *next_pair, int *prev_pair, int i, int j, char* result);
 
 };
 

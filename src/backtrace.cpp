@@ -18,22 +18,26 @@ Backtracing code for LinearSampling: Linear-Time RNA Secondary Structure Samplin
 
 using namespace std;
 
-default_random_engine generators[1];
 
-void BeamCKYParser::backtrack_beamC(int *next_pair, int *prev_pair, int j, char* result){
+void BeamCKYParser::backtrack_beamC(int j, char* result){
     if(j == 0) return;
     auto &stateC = bestC[j];
 
-    if (!stateC.visited){
-        stateC.visited = true;
+    SampleState & samplestate = sampleC[j];
+    if (!samplestate.visited) {
+
+      samplestate.visited = true;
+      
+	vector <float> alphalist;
 
         float accu_alpha = 0.0;
         int nucj = nucs[j];
         int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
 
         // C = C + U
-        accu_alpha = bestC[j-1].alpha - bestC[j].alpha;
-        update_if_better(stateC, accu_alpha, MANNER_C_eq_C_plus_U);
+	float localZ = bestC[j].alpha;
+        accu_alpha = bestC[j-1].alpha - localZ;
+        update_if_better(samplestate, alphalist, accu_alpha, MANNER_C_eq_C_plus_U);
         // C = C + P
         for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
             int i = item.first;
@@ -47,31 +51,34 @@ void BeamCKYParser::backtrack_beamC(int *next_pair, int *prev_pair, int j, char*
                 int nuck1 = nuci;
                 int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
                                                                      nucj, nucj1, seq_length);
-                accu_alpha = bestC[k].alpha + bestP[j][i].alpha + score_external_paired/kT - bestC[j].alpha;
+                accu_alpha = bestC[k].alpha + bestP[j][i].alpha + score_external_paired/kT - localZ;
 
-                update_if_better(stateC, accu_alpha, MANNER_C_eq_C_plus_P, k);
+                update_if_better(samplestate, alphalist, accu_alpha, MANNER_C_eq_C_plus_P, k);
             } else {
                 int score_external_paired = - v_score_external_paired(0, j, -1, nucs[0],
                                                          nucj, nucj1, seq_length);
-                accu_alpha = bestP[j][0].alpha + score_external_paired/kT - bestC[j].alpha;
-                update_if_better(stateC, accu_alpha, MANNER_C_eq_C_plus_P, -1);
+                accu_alpha = bestP[j][0].alpha + score_external_paired/kT - localZ;
+                update_if_better(samplestate, alphalist, accu_alpha, MANNER_C_eq_C_plus_P, -1);
             }
         }
-        discrete_distribution<> d(stateC.alphalist.begin(), stateC.alphalist.end());
-        stateC.distribution = d;
+        
+        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
     
     }
 
-    backtrack(next_pair, prev_pair, 0, j, result, stateC);
+    backtrack(0, j, result, samplestate);
 }
 
-void BeamCKYParser::backtrack_beamP(int *next_pair, int *prev_pair, int i, int j, char* result){
+void BeamCKYParser::backtrack_beamP(int i, int j, char* result){
     assert(i <= j - 4);
     auto &stateP = bestP[j][i];
+ 
+    SampleState & samplestate = sampleP[j][i];
 
-    if (!stateP.visited){
+    if (!samplestate.visited) {
+      samplestate.visited = true;
 
-        stateP.visited = true;
+	vector <float> alphalist;
 
         float accu_alpha = 0.0;
         int newscore;
@@ -80,6 +87,8 @@ void BeamCKYParser::backtrack_beamP(int *next_pair, int *prev_pair, int i, int j
         int nuci1 = (i+1) < seq_length ? nucs[i+1] : -1;
         int nucj = nucs[j];
         int nucj_1 = (j - 1) > -1 ? nucs[j - 1] : -1;
+
+	float localZ = bestP[j][i].alpha;
 
         {
             int p, q, nucq, nucq1, nucp, nucp_1;
@@ -96,13 +105,13 @@ void BeamCKYParser::backtrack_beamP(int *next_pair, int *prev_pair, int i, int j
 
                         int score_single = -v_score_single(i,j,p,q, nuci, nuci1, nucj_1, nucj,
                                                             nucp_1, nucp, nucq, nucq1); // same for vienna
-                        accu_alpha = bestP[q][p].alpha + score_single/kT - bestP[j][i].alpha;
+                        accu_alpha = bestP[q][p].alpha + score_single/kT - localZ;
 
                         if (((p - i) == 1) && ((j - q) == 1)){
-                            update_if_better(stateP, accu_alpha, MANNER_HELIX);
+                            update_if_better(samplestate, alphalist, accu_alpha, MANNER_HELIX);
                         }
                         else{
-                            update_if_better(stateP, accu_alpha, MANNER_SINGLE, static_cast<char>(p - i), j - q);
+                            update_if_better(samplestate, alphalist, accu_alpha, MANNER_SINGLE, static_cast<char>(p - i), j - q);
                         }
                     }
                     p = next_pair[nucq * seq_length + p];
@@ -122,69 +131,81 @@ void BeamCKYParser::backtrack_beamP(int *next_pair, int *prev_pair, int i, int j
 #endif
 
         newscore = - v_score_hairpin(i, j, nuci, nuci1, nucj_1, nucj, tetra_hex_tri);
-        accu_alpha = newscore/kT - bestP[j][i].alpha;
-        update_if_better(stateP, accu_alpha, MANNER_HAIRPIN);
+        accu_alpha = newscore/kT - localZ;
+        update_if_better(samplestate, alphalist, accu_alpha, MANNER_HAIRPIN);
+	
         auto iterator = bestMulti[j].find (i);
         if(iterator != bestMulti[j].end()) {
             int score_multi = - v_score_multi(i, j, nuci, nuci1, nucj_1, nucj, seq_length);
-            accu_alpha = bestMulti[j][i].alpha + score_multi/kT - bestP[j][i].alpha;
-            update_if_better(stateP, accu_alpha, MANNER_P_eq_MULTI);
+            accu_alpha = bestMulti[j][i].alpha + score_multi/kT - localZ;
+            update_if_better(samplestate, alphalist, accu_alpha, MANNER_P_eq_MULTI);
         }
-        discrete_distribution<> d(stateP.alphalist.begin(), stateP.alphalist.end());
-        stateP.distribution = d;
+        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
+
     }
-
-
-    backtrack(next_pair, prev_pair, i, j, result, stateP);
+    backtrack(i, j, result, samplestate);
 
 }
 
-void BeamCKYParser::backtrack_beamMulti(int *next_pair, int *prev_pair, int i, int j, char* result){
+void BeamCKYParser::backtrack_beamMulti(int i, int j, char* result){
     auto &stateMulti = bestMulti[j][i];
-    if (!stateMulti.visited){
-        stateMulti.visited = true;
-        float accu_alpha = 0.0;
+
+    SampleState & samplestate = sampleMulti[j][i];
+    
+    if (!samplestate.visited) {
+
+      samplestate.visited = true;
+      
+	float localZ = bestMulti[j][i].alpha;
+	vector <float> alphalist;
+	float accu_alpha = 0.0;
         int nuci = nucs[i];
         int nuci1 = nucs[i+1];
         int jprev = prev_pair[nuci * seq_length + j];
         auto iterator = bestMulti[jprev].find (i);
         if (jprev > i+10 && iterator != bestMulti[jprev].end()) { // no sharp turn 
-            accu_alpha = bestMulti[jprev][i].alpha - bestMulti[j][i].alpha;
-            update_if_better(stateMulti, accu_alpha, MANNER_MULTI_JUMP, jprev);
+            accu_alpha = bestMulti[jprev][i].alpha - localZ;
+            update_if_better(samplestate, alphalist, accu_alpha, MANNER_MULTI_JUMP, jprev);
         }
 
         for (int q = j-1; q >= i + 10; --q){
             for(auto& item : bestM2[q]){
                 int p = item.first;
                 if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
-                    accu_alpha = bestM2[q][p].alpha - bestMulti[j][i].alpha;
+		  accu_alpha = bestM2[q][p].alpha - localZ;
 
-                    update_if_better(stateMulti, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
+                    update_if_better(samplestate, alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
                 }
             }
             if(_allowed_pairs[nuci][nucs[q]]) break;
 
         }
-        discrete_distribution<> d(stateMulti.alphalist.begin(), stateMulti.alphalist.end());
-        stateMulti.distribution = d;
+        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
+
     }
-    backtrack(next_pair, prev_pair, i, j, result, stateMulti);
+    backtrack(i, j, result, samplestate);
 
 }
 
-void BeamCKYParser::backtrack_beamM2(int *next_pair, int *prev_pair, int i, int j, char* result){
+void BeamCKYParser::backtrack_beamM2(int i, int j, char* result){
 
     auto &stateM2 = bestM2[j][i];
+    SampleState & samplestate = sampleM2[j][i];
 
-    if (!stateM2.visited){
-        stateM2.visited = true;
-        float accu_alpha = 0.0;
+    if (!samplestate.visited) {
 
+      samplestate.visited = true;
+      
+	  float accu_alpha = 0.0;
+
+	vector <float> alphalist;
         int nuci = nucs[i];
         int nuci1 = nucs[i+1];
         int nucj = nucs[j];
         int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
-
+	
+	float localZ = bestM2[j][i].alpha;
+	
         // M2 = M + P
         for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
             int k = item.first;
@@ -196,26 +217,29 @@ void BeamCKYParser::backtrack_beamM2(int *next_pair, int *prev_pair, int i, int 
                     int nuck_1 = (k-1>-1) ? nucs[k-1] : -1;
                     value_type M1_score = - v_score_M1(k, j, j, nuck_1, nuck, nucj, nucj1, seq_length);
                 
-                    accu_alpha = bestM[m][i].alpha + bestP[j][k].alpha + M1_score/kT - bestM2[j][i].alpha;
-                    update_if_better(stateM2, accu_alpha, MANNER_M2_eq_M_plus_P, m);
+                    accu_alpha = bestM[m][i].alpha + bestP[j][k].alpha + M1_score/kT - localZ;
+                    update_if_better(samplestate, alphalist, accu_alpha, MANNER_M2_eq_M_plus_P, m);
                 }
             }
         }
 
-        discrete_distribution<> d(stateM2.alphalist.begin(), stateM2.alphalist.end());
-        stateM2.distribution = d;
+        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
     }
-    backtrack(next_pair, prev_pair, i, j, result, stateM2);
+
+    backtrack(i, j, result, samplestate);
 
 }
 
-void BeamCKYParser::backtrack_beamM(int *next_pair, int *prev_pair, int i, int j, char* result){
+void BeamCKYParser::backtrack_beamM(int i, int j, char* result){
     auto &stateM = bestM[j][i];
 
-    if (!stateM.visited){
+    SampleState & samplestate = sampleM[j][i];
 
-        stateM.visited = true;
+    if (!samplestate.visited) {
 
+      samplestate.visited = true;
+      
+	vector <float> alphalist;
         float accu_alpha = 0.0;
 
         int nuci = nucs[i];
@@ -223,43 +247,39 @@ void BeamCKYParser::backtrack_beamM(int *next_pair, int *prev_pair, int i, int j
         int nucj = nucs[j];
         int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
 
+	float localZ = bestM[j][i].alpha;
+
         // M = M + U
         auto iterator = bestM[j-1].find(i);
         if(j > i+1 && iterator != bestM[j-1].end()) {
-            accu_alpha = bestM[j-1][i].alpha - bestM[j][i].alpha;
-            update_if_better(stateM, accu_alpha, MANNER_M_eq_M_plus_U);
+            accu_alpha = bestM[j-1][i].alpha - localZ;
+            update_if_better(samplestate, alphalist, accu_alpha, MANNER_M_eq_M_plus_U);
         }
 
         iterator = bestP[j].find(i);
         if(iterator != bestP[j].end()) {
             int M1_score = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
-            accu_alpha = bestP[j][i].alpha + M1_score/kT - bestM[j][i].alpha;
-            update_if_better(stateM, accu_alpha, MANNER_M_eq_P);
+            accu_alpha = bestP[j][i].alpha + M1_score/kT - localZ;
+            update_if_better(samplestate, alphalist, accu_alpha, MANNER_M_eq_P);
         }
 
         iterator = bestM2[j].find(i);
         if(iterator != bestM2[j].end()) {
-            accu_alpha = bestM2[j][i].alpha - bestM[j][i].alpha;
-            update_if_better(stateM, accu_alpha, MANNER_M_eq_M2);
+	  accu_alpha = bestM2[j][i].alpha - localZ;
+            update_if_better(samplestate, alphalist, accu_alpha, MANNER_M_eq_M2);
         }
-        discrete_distribution<> d(stateM.alphalist.begin(), stateM.alphalist.end());
-        stateM.distribution = d;
+        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
+
 
     }
-    backtrack(next_pair, prev_pair, i, j, result, stateM);
+
+    backtrack(i, j, result, samplestate);
 
 }
 
-unsigned long choice(State& state){
-    return state.distribution(generators[0]);
-}
+void BeamCKYParser::backtrack(int i, int j, char* result, SampleState& samplestate){
 
-
-
-void BeamCKYParser::backtrack(int *next_pair, int *prev_pair, int i, int j, char* result, State& state){
-    unsigned long index = choice(state);
-     
-    BackPointer backpointer = state.tracelist.at(index); // lhuang: buggy: vector index out of range for empty tracelist
+  BackPointer backpointer = samplestate.tracelist.at(samplestate.distribution(generator)); // lhuang: buggy: vector index out of range for empty tracelist
     int p, q, k;
     switch(backpointer.manner) {
         case MANNER_H:
@@ -277,7 +297,7 @@ void BeamCKYParser::backtrack(int *next_pair, int *prev_pair, int i, int j, char
                 result[j] = ')';
                 p = i + backpointer.trace.paddings.l1;
                 q = j - backpointer.trace.paddings.l2;
-                backtrack_beamP(next_pair, prev_pair, p, q, result);
+                backtrack_beamP(p, q, result);
             }
             break;
         case MANNER_HELIX:
@@ -286,51 +306,51 @@ void BeamCKYParser::backtrack(int *next_pair, int *prev_pair, int i, int j, char
                 result[j] = ')';
                 p = i + 1;
                 q = j - 1;
-                backtrack_beamP(next_pair, prev_pair, p, q, result);
+                backtrack_beamP(p, q, result);
             }
             break;
         case MANNER_MULTI: 
             p = i + backpointer.trace.paddings.l1;
             q = j - backpointer.trace.paddings.l2;
-            backtrack_beamM2(next_pair, prev_pair, p, q, result);
+            backtrack_beamM2(p, q, result);
             break;
         case MANNER_MULTI_JUMP:
             k = backpointer.trace.split;
-            backtrack_beamMulti(next_pair, prev_pair, i, k, result);
+            backtrack_beamMulti(i, k, result);
             break;
         case MANNER_P_eq_MULTI:
             result[i] = '(';
             result[j] = ')';
-            backtrack_beamMulti(next_pair, prev_pair, i, j, result);
+            backtrack_beamMulti(i, j, result);
             break;
         case MANNER_M2_eq_M_plus_P:
             k = backpointer.trace.split;
-            backtrack_beamM(next_pair, prev_pair, i, k, result);
-            backtrack_beamP(next_pair, prev_pair, k+1, j, result);
+            backtrack_beamM(i, k, result);
+            backtrack_beamP(k+1, j, result);
             break;
         case MANNER_M_eq_M2:
-            backtrack_beamM2(next_pair, prev_pair, i, j, result);
+            backtrack_beamM2(i, j, result);
             break;
         case MANNER_M_eq_M_plus_U:
-            backtrack_beamM(next_pair, prev_pair, i, j-1, result);
+            backtrack_beamM(i, j-1, result);
             break;
         case MANNER_M_eq_P:
-            backtrack_beamP(next_pair, prev_pair, i, j, result);
+            backtrack_beamP(i, j, result);
             break;
         case MANNER_C_eq_C_plus_U:
             k = j - 1;
-            if (k != -1) backtrack_beamC(next_pair, prev_pair, k, result);
+            if (k != -1) backtrack_beamC(k, result);
             break;
         case MANNER_C_eq_C_plus_P:
             {
                 k = backpointer.trace.split;
                 if (k != -1) {
-                    backtrack_beamC(next_pair, prev_pair, k, result);
-                    backtrack_beamP(next_pair, prev_pair, k+1, j, result);
+                    backtrack_beamC(k, result);
+                    backtrack_beamP(k+1, j, result);
 
                 }
                 else {
-                    backtrack_beamP(next_pair, prev_pair, i, j, result);
+                    backtrack_beamP(i, j, result);
                 }
             }
             break;
@@ -341,32 +361,42 @@ void BeamCKYParser::backtrack(int *next_pair, int *prev_pair, int i, int j, char
     return;
 }
 
-void BeamCKYParser::sample(int *next_pair, int *prev_pair){
-    char result[seq_length+1];
+void BeamCKYParser::sample(int sample_number){
 
-    generators[0] = default_random_engine(rand());
+  // sampleC = new SampleState[seq_length];
+
+    sampleH = new unordered_map<int, SampleState>[seq_length];
+    sampleP = new unordered_map<int, SampleState>[seq_length];
+    sampleM = new unordered_map<int, SampleState>[seq_length];
+    sampleM2 = new unordered_map<int, SampleState>[seq_length];
+    sampleMulti = new unordered_map<int, SampleState>[seq_length];
+
+  char result[seq_length+1];
+
+    generator = default_random_engine(rand());
 
     struct timeval parse_starttime, parse_endtime;
     gettimeofday(&parse_starttime, NULL);
-    for(int i=0; i<sample_number; i++){
+    for(int i = 0; i < sample_number; i++){
         memset(result, '.', seq_length);
         result[seq_length] = 0;
 
 	try {
-	  backtrack_beamC(next_pair, prev_pair, seq_length-1, result);
+	  backtrack_beamC(seq_length-1, result);
 	  printf("%s\n", string(result).c_str());
-	}
+	  }
 	catch (const out_of_range & err) {
-	  if (is_verbose)
-	    printf("empty tracelist\n");
+//	  if (is_verbose)
+//	    printf("empty tracelist\n");
 	  i--; // NB: hit vector index out of range exception
 	}
     }   
     if(is_verbose){
         gettimeofday(&parse_endtime, NULL);
         double parse_elapsed_time = parse_endtime.tv_sec - parse_starttime.tv_sec + (parse_endtime.tv_usec-parse_starttime.tv_usec)/1000000.0;
-        printf("Sequence_length: %d Sample Number: %d Sample Time: %f\n", seq_length, sample_number, parse_elapsed_time);
+        printf("Sequence_length: %d Sample Number: %d Sample Time: %f secs\n", seq_length, sample_number, parse_elapsed_time);
     }
+    cleanup();    
     return;
 }
 
