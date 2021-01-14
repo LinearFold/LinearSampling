@@ -37,6 +37,14 @@ typedef int value_type;
 #define VALUE_MIN numeric_limits<double>::lowest()
 
 
+enum Type {
+  TYPE_C = 0,
+  TYPE_P,
+  TYPE_M,
+  TYPE_M2,
+  TYPE_MULTI,
+};
+
 enum Manner {
   MANNER_NONE = 0,              // 0: empty
   MANNER_H,                     // 1: hairpin candidate
@@ -97,6 +105,32 @@ struct SampleState {
   vector<BackPointer> tracelist;
   SampleState(): visited(false), distribution{}, tracelist{}
   {};
+
+  void append(vector <float> & alphalist, float alpha_, Manner manner_) {
+      if (alpha_ > th) {
+        tracelist.push_back(BackPointer(manner_));
+        alphalist.push_back(Fast_Exp(alpha_));
+      }
+    };
+
+    void append(vector <float> & alphalist, float alpha_, Manner manner_, int split_) {
+      if (alpha_ > th) {
+        BackPointer backpointer;
+        backpointer.set(manner_, split_);
+        tracelist.push_back(backpointer);
+        alphalist.push_back(Fast_Exp(alpha_));
+      }
+    };
+
+  void append(vector <float> & alphalist, float alpha_, Manner manner_, char l1_, int l2_) {
+      if (alpha_ > th) {
+        BackPointer backpointer;
+        backpointer.set(manner_, l1_, l2_);
+        tracelist.push_back(backpointer);
+        alphalist.push_back(Fast_Exp(alpha_));
+      }
+    };
+  
 };
 
 
@@ -149,44 +183,18 @@ private:
 
     void cleanup();
 
-  void update_if_better(SampleState &state, vector <float> & alphalist, float alpha_, Manner manner_) {
-      if (alpha_ > th) {
-        state.tracelist.push_back(BackPointer(manner_));
-        alphalist.push_back(Fast_Exp(alpha_));
-      }
-    };
 
-    void update_if_better(SampleState &state, vector <float> & alphalist, float alpha_, Manner manner_, int split_) {
-      if (alpha_ > th) {
-        BackPointer backpointer;
-        backpointer.set(manner_, split_);
-        state.tracelist.push_back(backpointer);
-        alphalist.push_back(Fast_Exp(alpha_));
-      }
-    };
-
-  void update_if_better(SampleState &state, vector <float> & alphalist, float alpha_, Manner manner_, char l1_, int l2_) {
-      if (alpha_ > th) {
-        BackPointer backpointer;
-        backpointer.set(manner_, l1_, l2_);
-        state.tracelist.push_back(backpointer);
-        alphalist.push_back(Fast_Exp(alpha_));
-      }
-    };
-  
-  void backtrack(int i, int j, char* result, SampleState& state);
-
-    void backtrack_beamC(int j, char* result);
-    void backtrack_beamP(int i, int j, char* result);
-    void backtrack_beamMulti(int i, int j, char* result);
-    void backtrack_beamM2(int i, int j, char* result);
-    void backtrack_beamM(int i, int j, char* result);
-
-  
-    float beam_prune(unordered_map<int, State>& beamstep);
-    vector<pair<float, int>> scores;
+  float beam_prune(unordered_map<int, State>& beamstep);
+  vector<pair<float, int>> scores;
 
     // sampling
+
+  void backtrack(int i, int j, char* result, Type type);
+  
+  State & get_state(int i, int j, Type type);
+  SampleState & get_sample_state(int i, int j, Type type);
+  void recover_hyperedges(int i, int j, Type type, SampleState & samplestate);
+
 
 };
 

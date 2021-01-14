@@ -18,26 +18,20 @@ Backtracing code for LinearSampling: Linear-Time RNA Secondary Structure Samplin
 
 using namespace std;
 
+void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & samplestate) {
 
-void BeamCKYParser::backtrack_beamC(int j, char* result){
-    if(j == 0) return;
-    auto &stateC = bestC[j];
-
-    SampleState & samplestate = sampleC[j];
-    if (!samplestate.visited) {
-
-      samplestate.visited = true;
-      
-	vector <float> alphalist;
-
-        float accu_alpha = 0.0;
-        int nucj = nucs[j];
-        int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
-
+  State & state = get_state(i, j, type);
+  float localZ = state.alpha;
+  vector <float> alphalist;
+  float accu_alpha;
+  switch (type) {
+  case TYPE_C: {
+    int nucj = nucs[j];
+    int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
+	
         // C = C + U
-	float localZ = bestC[j].alpha;
         accu_alpha = bestC[j-1].alpha - localZ;
-        update_if_better(samplestate, alphalist, accu_alpha, MANNER_C_eq_C_plus_U);
+        samplestate.append(alphalist, accu_alpha, MANNER_C_eq_C_plus_U);
         // C = C + P
         for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
             int i = item.first;
@@ -46,79 +40,50 @@ void BeamCKYParser::backtrack_beamC(int j, char* result){
             int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
 
             int k = i - 1;
-            if (k >= 0) {
-                int nuck = nuci_1;
-                int nuck1 = nuci;
-                int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
-                                                                     nucj, nucj1, seq_length);
-                accu_alpha = bestC[k].alpha + bestP[j][i].alpha + score_external_paired/kT - localZ;
-
-                update_if_better(samplestate, alphalist, accu_alpha, MANNER_C_eq_C_plus_P, k);
-            } else {
-                int score_external_paired = - v_score_external_paired(0, j, -1, nucs[0],
-                                                         nucj, nucj1, seq_length);
-                accu_alpha = bestP[j][0].alpha + score_external_paired/kT - localZ;
-                update_if_better(samplestate, alphalist, accu_alpha, MANNER_C_eq_C_plus_P, -1);
-            }
+	    int nuck = nuci_1;
+	    int nuck1 = nuci;
+	    int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
+								  nucj, nucj1, seq_length);
+	    accu_alpha = ((k >= 0) ? bestC[k].alpha : 0) + state.alpha + score_external_paired/kT - localZ; // lhuang?
+	    samplestate.append(alphalist, accu_alpha, MANNER_C_eq_C_plus_P, k);
         }
-        
-        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
-    
-    }
-
-    backtrack(0, j, result, samplestate);
-}
-
-void BeamCKYParser::backtrack_beamP(int i, int j, char* result){
-    assert(i <= j - 4);
-    auto &stateP = bestP[j][i];
- 
-    SampleState & samplestate = sampleP[j][i];
-
-    if (!samplestate.visited) {
-      samplestate.visited = true;
-
-	vector <float> alphalist;
-
-        float accu_alpha = 0.0;
-        int newscore;
+  }
+	break;
+  case TYPE_P: {
+    int newscore;
 
         int nuci = nucs[i];
         int nuci1 = (i+1) < seq_length ? nucs[i+1] : -1;
         int nucj = nucs[j];
         int nucj_1 = (j - 1) > -1 ? nucs[j - 1] : -1;
 
-	float localZ = bestP[j][i].alpha;
-
-        {
-            int p, q, nucq, nucq1, nucp, nucp_1;
-            // helix or single_branch
-            for (q = j - 1; q >= std::max(j - SINGLE_MAX_LEN, i+5); --q) { // no sharp turn
-                nucq = nucs[q];
-                nucq1 = nucs[q + 1];
-                p = next_pair[nucq * seq_length + i]; 
-                while (p != -1 && p <= q - 4 && ((p - i) + (j - q) - 2 <= SINGLE_MAX_LEN)) {
-                    auto iterator = bestP[q].find (p);
-                    if(iterator != bestP[q].end()) {
-                        nucp = nucs[p];
-                        nucp_1 = nucs[p - 1];
-
-                        int score_single = -v_score_single(i,j,p,q, nuci, nuci1, nucj_1, nucj,
-                                                            nucp_1, nucp, nucq, nucq1); // same for vienna
-                        accu_alpha = bestP[q][p].alpha + score_single/kT - localZ;
-
-                        if (((p - i) == 1) && ((j - q) == 1)){
-                            update_if_better(samplestate, alphalist, accu_alpha, MANNER_HELIX);
-                        }
-                        else{
-                            update_if_better(samplestate, alphalist, accu_alpha, MANNER_SINGLE, static_cast<char>(p - i), j - q);
-                        }
-                    }
-                    p = next_pair[nucq * seq_length + p];
-                }
-            }
-        }
-
+	int p, q, nucq, nucq1, nucp, nucp_1;
+	// helix or single_branch
+	for (q = j - 1; q >= std::max(j - SINGLE_MAX_LEN, i+5); --q) { // no sharp turn
+	  nucq = nucs[q];
+	  nucq1 = nucs[q + 1];
+	  p = next_pair[nucq * seq_length + i]; 
+	  while (p != -1 && p <= q - 4 && ((p - i) + (j - q) - 2 <= SINGLE_MAX_LEN)) {
+	    auto iterator = bestP[q].find (p);
+	    if(iterator != bestP[q].end()) {
+	      nucp = nucs[p];
+	      nucp_1 = nucs[p - 1];
+	      
+	      int score_single = -v_score_single(i,j,p,q, nuci, nuci1, nucj_1, nucj,
+						 nucp_1, nucp, nucq, nucq1); // same for vienna
+	      accu_alpha = bestP[q][p].alpha + score_single/kT - localZ;
+	      
+	      if (((p - i) == 1) && ((j - q) == 1)){
+		samplestate.append(alphalist, accu_alpha, MANNER_HELIX);
+	      }
+	      else{
+		samplestate.append(alphalist, accu_alpha, MANNER_SINGLE, static_cast<char>(p - i), j - q);
+	      }
+	    }
+	    p = next_pair[nucq * seq_length + p];
+	  }
+	}
+  
         // hairpin
         int tetra_hex_tri = -1;
 #ifdef SPECIAL_HP
@@ -132,79 +97,49 @@ void BeamCKYParser::backtrack_beamP(int i, int j, char* result){
 
         newscore = - v_score_hairpin(i, j, nuci, nuci1, nucj_1, nucj, tetra_hex_tri);
         accu_alpha = newscore/kT - localZ;
-        update_if_better(samplestate, alphalist, accu_alpha, MANNER_HAIRPIN);
+        samplestate.append(alphalist, accu_alpha, MANNER_HAIRPIN);
 	
         auto iterator = bestMulti[j].find (i);
         if(iterator != bestMulti[j].end()) {
             int score_multi = - v_score_multi(i, j, nuci, nuci1, nucj_1, nucj, seq_length);
             accu_alpha = bestMulti[j][i].alpha + score_multi/kT - localZ;
-            update_if_better(samplestate, alphalist, accu_alpha, MANNER_P_eq_MULTI);
+            samplestate.append(alphalist, accu_alpha, MANNER_P_eq_MULTI);
         }
-        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
-
-    }
-    backtrack(i, j, result, samplestate);
-
-}
-
-void BeamCKYParser::backtrack_beamMulti(int i, int j, char* result){
-    auto &stateMulti = bestMulti[j][i];
-
-    SampleState & samplestate = sampleMulti[j][i];
+  }
+	break;
+  case TYPE_M: {
     
-    if (!samplestate.visited) {
-
-      samplestate.visited = true;
-      
-	float localZ = bestMulti[j][i].alpha;
-	vector <float> alphalist;
-	float accu_alpha = 0.0;
         int nuci = nucs[i];
-        int nuci1 = nucs[i+1];
-        int jprev = prev_pair[nuci * seq_length + j];
-        auto iterator = bestMulti[jprev].find (i);
-        if (jprev > i+10 && iterator != bestMulti[jprev].end()) { // no sharp turn 
-            accu_alpha = bestMulti[jprev][i].alpha - localZ;
-            update_if_better(samplestate, alphalist, accu_alpha, MANNER_MULTI_JUMP, jprev);
+        int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
+        int nucj = nucs[j];
+        int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
+
+        // M = M + U
+        auto iterator = bestM[j-1].find(i);
+        if(j > i+1 && iterator != bestM[j-1].end()) {
+            accu_alpha = bestM[j-1][i].alpha - localZ;
+            samplestate.append(alphalist, accu_alpha, MANNER_M_eq_M_plus_U);
         }
 
-        for (int q = j-1; q >= i + 10; --q){
-            for(auto& item : bestM2[q]){
-                int p = item.first;
-                if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
-		  accu_alpha = bestM2[q][p].alpha - localZ;
-
-                    update_if_better(samplestate, alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
-                }
-            }
-            if(_allowed_pairs[nuci][nucs[q]]) break;
-
+        iterator = bestP[j].find(i);
+        if(iterator != bestP[j].end()) {
+            int M1_score = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
+            accu_alpha = bestP[j][i].alpha + M1_score/kT - localZ;
+            samplestate.append(alphalist, accu_alpha, MANNER_M_eq_P);
         }
-        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
 
-    }
-    backtrack(i, j, result, samplestate);
-
-}
-
-void BeamCKYParser::backtrack_beamM2(int i, int j, char* result){
-
-    auto &stateM2 = bestM2[j][i];
-    SampleState & samplestate = sampleM2[j][i];
-
-    if (!samplestate.visited) {
-
-      samplestate.visited = true;
-      
-	  float accu_alpha = 0.0;
-
-	vector <float> alphalist;
+        iterator = bestM2[j].find(i);
+        if(iterator != bestM2[j].end()) {
+	  accu_alpha = bestM2[j][i].alpha - localZ;
+            samplestate.append(alphalist, accu_alpha, MANNER_M_eq_M2);
+        }
+  }
+	break;
+  case TYPE_M2: {
         int nuci = nucs[i];
         int nuci1 = nucs[i+1];
         int nucj = nucs[j];
         int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
-	
-	float localZ = bestM2[j][i].alpha;
 	
         // M2 = M + P
         for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
@@ -218,145 +153,139 @@ void BeamCKYParser::backtrack_beamM2(int i, int j, char* result){
                     value_type M1_score = - v_score_M1(k, j, j, nuck_1, nuck, nucj, nucj1, seq_length);
                 
                     accu_alpha = bestM[m][i].alpha + bestP[j][k].alpha + M1_score/kT - localZ;
-                    update_if_better(samplestate, alphalist, accu_alpha, MANNER_M2_eq_M_plus_P, m);
+                    samplestate.append(alphalist, accu_alpha, MANNER_M2_eq_M_plus_P, m);
                 }
             }
         }
-
-        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
+  }
+	break;
+  case TYPE_MULTI: {
+    int nuci = nucs[i];
+    int nuci1 = nucs[i+1];
+    int jprev = prev_pair[nuci * seq_length + j];
+    auto iterator = bestMulti[jprev].find (i);
+    if (jprev > i+10 && iterator != bestMulti[jprev].end()) { // no sharp turn 
+      accu_alpha = bestMulti[jprev][i].alpha - localZ;
+      samplestate.append(alphalist, accu_alpha, MANNER_MULTI_JUMP, jprev);
     }
 
-    backtrack(i, j, result, samplestate);
-
-}
-
-void BeamCKYParser::backtrack_beamM(int i, int j, char* result){
-    auto &stateM = bestM[j][i];
-
-    SampleState & samplestate = sampleM[j][i];
-
-    if (!samplestate.visited) {
-
-      samplestate.visited = true;
-      
-	vector <float> alphalist;
-        float accu_alpha = 0.0;
-
-        int nuci = nucs[i];
-        int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
-        int nucj = nucs[j];
-        int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
-
-	float localZ = bestM[j][i].alpha;
-
-        // M = M + U
-        auto iterator = bestM[j-1].find(i);
-        if(j > i+1 && iterator != bestM[j-1].end()) {
-            accu_alpha = bestM[j-1][i].alpha - localZ;
-            update_if_better(samplestate, alphalist, accu_alpha, MANNER_M_eq_M_plus_U);
-        }
-
-        iterator = bestP[j].find(i);
-        if(iterator != bestP[j].end()) {
-            int M1_score = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
-            accu_alpha = bestP[j][i].alpha + M1_score/kT - localZ;
-            update_if_better(samplestate, alphalist, accu_alpha, MANNER_M_eq_P);
-        }
-
-        iterator = bestM2[j].find(i);
-        if(iterator != bestM2[j].end()) {
-	  accu_alpha = bestM2[j][i].alpha - localZ;
-            update_if_better(samplestate, alphalist, accu_alpha, MANNER_M_eq_M2);
-        }
-        samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
-
-
+    for (int q = j-1; q >= i + 10; --q){
+      for(auto& item : bestM2[q]){
+	int p = item.first;
+	if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
+	  accu_alpha = bestM2[q][p].alpha - localZ;
+	  samplestate.append(alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
+	}
+      }
+      if(_allowed_pairs[nuci][nucs[q]]) break;
     }
-
-    backtrack(i, j, result, samplestate);
-
+  }
+  }
+  samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
 }
 
-void BeamCKYParser::backtrack(int i, int j, char* result, SampleState& samplestate){
+SampleState & BeamCKYParser::get_sample_state(int i, int j, Type type) {
+  switch (type) {
+  case TYPE_C:
+    return sampleC[j];
+  case TYPE_P:
+    return sampleP[j][i];
+  case TYPE_M:
+    return sampleM[j][i];
+  case TYPE_M2:
+    return sampleM2[j][i];
+  case TYPE_MULTI:
+    return sampleMulti[j][i];
+  }
+}
 
+State & BeamCKYParser::get_state(int i, int j, Type type) {
+  switch (type) {
+  case TYPE_C:
+    return bestC[j];
+  case TYPE_P:
+    return bestP[j][i];
+  case TYPE_M:
+    return bestM[j][i];
+  case TYPE_M2:
+    return bestM2[j][i];
+  case TYPE_MULTI:
+    return bestMulti[j][i];
+  }
+}
+
+void BeamCKYParser::backtrack(int i, int j, char* result, Type type){
+
+  SampleState& samplestate = get_sample_state(i, j, type);
+  
+  if (!samplestate.visited) {
+    samplestate.visited = true;
+    recover_hyperedges(i, j, type, samplestate);
+  }
+    
   BackPointer backpointer = samplestate.tracelist.at(samplestate.distribution(generator)); // lhuang: buggy: vector index out of range for empty tracelist
+  
     int p, q, k;
     switch(backpointer.manner) {
-        case MANNER_H:
-            // this state should not be traced
-            break;
         case MANNER_HAIRPIN:
-            {
-                result[i] = '(';
-                result[j] = ')';
-            }
-            break;
+	  result[i] = '(';
+	  result[j] = ')';
+	  break;
         case MANNER_SINGLE:
-            {
-                result[i] = '(';
-                result[j] = ')';
-                p = i + backpointer.trace.paddings.l1;
-                q = j - backpointer.trace.paddings.l2;
-                backtrack_beamP(p, q, result);
-            }
-            break;
+	  result[i] = '(';
+	  result[j] = ')';
+	  p = i + backpointer.trace.paddings.l1;
+	  q = j - backpointer.trace.paddings.l2;
+	  backtrack(p, q, result, TYPE_P);
+	  break;
         case MANNER_HELIX:
-            {
-                result[i] = '(';
-                result[j] = ')';
-                p = i + 1;
-                q = j - 1;
-                backtrack_beamP(p, q, result);
-            }
-            break;
+	  result[i] = '(';
+	  result[j] = ')';
+	  p = i + 1;
+	  q = j - 1;
+	  backtrack(p, q, result, TYPE_P);
+	  break;
         case MANNER_MULTI: 
-            p = i + backpointer.trace.paddings.l1;
-            q = j - backpointer.trace.paddings.l2;
-            backtrack_beamM2(p, q, result);
-            break;
+	  p = i + backpointer.trace.paddings.l1;
+	  q = j - backpointer.trace.paddings.l2;
+	  backtrack(p, q, result, TYPE_M2);
+	  break;
         case MANNER_MULTI_JUMP:
-            k = backpointer.trace.split;
-            backtrack_beamMulti(i, k, result);
-            break;
+	  k = backpointer.trace.split;
+	  backtrack(i, k, result, TYPE_MULTI);
+	  break;
         case MANNER_P_eq_MULTI:
-            result[i] = '(';
-            result[j] = ')';
-            backtrack_beamMulti(i, j, result);
-            break;
+	  result[i] = '(';
+	  result[j] = ')';
+	  backtrack(i, j, result, TYPE_MULTI);
+	  break;
         case MANNER_M2_eq_M_plus_P:
-            k = backpointer.trace.split;
-            backtrack_beamM(i, k, result);
-            backtrack_beamP(k+1, j, result);
-            break;
+	  k = backpointer.trace.split;
+	  backtrack(i, k, result, TYPE_M);
+	  backtrack(k+1, j, result, TYPE_P);
+	  break;
         case MANNER_M_eq_M2:
-            backtrack_beamM2(i, j, result);
-            break;
+	  backtrack(i, j, result, TYPE_M2);
+	  break;
         case MANNER_M_eq_M_plus_U:
-            backtrack_beamM(i, j-1, result);
-            break;
+	  backtrack(i, j-1, result, TYPE_M);
+	  break;
         case MANNER_M_eq_P:
-            backtrack_beamP(i, j, result);
-            break;
+	  backtrack(i, j, result, TYPE_P);
+	  break;
         case MANNER_C_eq_C_plus_U:
-            k = j - 1;
-            if (k != -1) backtrack_beamC(k, result);
-            break;
+	  k = j - 1;
+	  if (k != -1) backtrack(0, k, result, TYPE_C);
+	  break;
         case MANNER_C_eq_C_plus_P:
-            {
-                k = backpointer.trace.split;
-                if (k != -1) {
-                    backtrack_beamC(k, result);
-                    backtrack_beamP(k+1, j, result);
-
-                }
-                else {
-                    backtrack_beamP(i, j, result);
-                }
-            }
-            break;
+	  k = backpointer.trace.split;
+	  if (k != -1) //lhuang
+	    backtrack(0, k, result, TYPE_C);
+	  backtrack(k+1, j, result, TYPE_P);
+	  break;
         default:  // MANNER_NONE or other cases
-            printf("wrong manner at %d, %d: manner %d\n", i, j, backpointer.manner); fflush(stdout);
-            assert(false);
+	  printf("wrong manner at %d, %d: manner %d\n", i, j, backpointer.manner); fflush(stdout);
+	  assert(false);
     }
     return;
 }
@@ -382,7 +311,7 @@ void BeamCKYParser::sample(int sample_number){
         result[seq_length] = 0;
 
 	try {
-	  backtrack_beamC(seq_length-1, result);
+	  backtrack(0, seq_length-1, result, TYPE_C);
 	  printf("%s\n", string(result).c_str());
 	  }
 	catch (const out_of_range & err) {
