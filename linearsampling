@@ -13,6 +13,8 @@ def setgflags():
     flags.DEFINE_boolean('verbose', False, "print out energy of each loop in the structure, (DEFAULT=FALSE)")
     flags.DEFINE_integer('sample_number', 10, "sample number, (DEFAULT=10)", short_name='k') 
     flags.DEFINE_boolean('read_forest', False, "read forest from STDIN (DEFAULT=FALSE)", short_name="f")
+    flags.DEFINE_boolean('full_saving', False, "save full forest (all hyperedges) before sampling (DEFAULT=FALSE")
+    flags.DEFINE_boolean('no_saving', False, "do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000 (DEFAULT=FALSE")
     argv = FLAGS(sys.argv)
 
 def main():
@@ -21,9 +23,11 @@ def main():
     is_verbose = '1' if FLAGS.verbose else '0'
     sample_number = str(FLAGS.sample_number)
     read_forest = '1' if FLAGS.read_forest else '0'
+    assert not (FLAGS.full_saving and FLAGS.no_saving)  # can only use one saving option 
+    saving_option = 0 if FLAGS.no_saving else (2 if FLAGS.full_saving else 1) 
 
     path = os.path.dirname(os.path.abspath(__file__))
-    cmd = ["%s/%s" % (path, ('bin/linearsampling_v')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest]
+    cmd = ["%s/%s" % (path, ('bin/linearsampling_v')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #, saving_option]
     subprocess.call(cmd, stdin=sys.stdin)
     
 if __name__ == '__main__':

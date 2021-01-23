@@ -20,6 +20,9 @@ using namespace std;
 
 void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & samplestate) {
 
+  samplestate.visited = true;
+  uniq_visited ++; 
+
   State & state = get_state(i, j, type);
   float localZ = state.alpha;
   vector <float> alphalist;
@@ -59,6 +62,7 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
 
 	int p, q, nucq, nucq1, nucp, nucp_1;
 	// helix or single_branch
+	
 	for (q = j - 1; q >= std::max(j - SINGLE_MAX_LEN, i+5); --q) { // no sharp turn
 	  nucq = nucs[q];
 	  nucq1 = nucs[q + 1];
@@ -82,7 +86,8 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
 	    }
 	    p = next_pair[nucq * seq_length + p];
 	  }
-	}
+	  }
+	
   
         // hairpin
         int tetra_hex_tri = -1;
@@ -142,9 +147,11 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
         int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
 	
         // M2 = M + P
-        for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
-            int k = item.first;
-            if (k > i) {
+        //for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm
+	for (auto & item : sortedP[j]) { // map not unorderd_map
+	  int k = -item.first; // reverse sorted
+	  //printf("%d %d %d\n", i, k, j);
+            if (k > i + 4) { // lhuang: +4
                 int m = k - 1;
                 auto iterator = bestM[m].find(i);
                 if(iterator != bestM[m].end()) {
@@ -156,7 +163,10 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
                     samplestate.append(alphalist, accu_alpha, MANNER_M2_eq_M_plus_P, m);
                 }
             }
+	    else
+	      break;
         }
+	//printf("\n");
   }
 	break;
   case TYPE_MULTI: {
@@ -168,8 +178,8 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
       accu_alpha = bestMulti[jprev][i].alpha - localZ;
       samplestate.append(alphalist, accu_alpha, MANNER_MULTI_JUMP, jprev);
     }
-
-    for (int q = j-1; q >= i + 10; --q){
+    /*
+    for (int q = j-1; q >= i + 10; --q){ // lhuang
       for(auto& item : bestM2[q]){
 	int p = item.first;
 	if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
@@ -178,7 +188,15 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
 	}
       }
       if(_allowed_pairs[nuci][nucs[q]]) break;
-    }
+      }
+    */
+    for (int q = j - 1; q >= jprev; q --) {
+      for (int p = i+1; p <= q - 9 && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN; p++)
+	if (bestM2[q][p].alpha > -1e6) {
+	  accu_alpha = bestM2[q][p].alpha - localZ;
+          samplestate.append(alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
+	}	
+	} 
   }
   }
   samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
@@ -198,13 +216,27 @@ State & BeamCKYParser::get_state(int i, int j, Type type) {
     return bestMulti[j][i];
   }
 }
+unordered_map<int, State> * BeamCKYParser::get_states(Type type) {
+  switch (type) {
+  case TYPE_C:
+    assert(false);
+  case TYPE_P:
+    return bestP;
+  case TYPE_M:
+    return bestM;
+  case TYPE_M2:
+    return bestM2;
+  case TYPE_MULTI:
+    return bestMulti;
+  }
+}
 
 void BeamCKYParser::backtrack(int i, int j, char* result, Type type){
 
   SampleState& samplestate = samplestates[type][j][i]; //get_sample_state(i, j, type);
+  visited ++;
   
   if (!samplestate.visited) {
-    samplestate.visited = true;
     recover_hyperedges(i, j, type, samplestate);
   }
     
@@ -283,17 +315,45 @@ void BeamCKYParser::sample(int sample_number){
 
   char result[seq_length+1];
 
+  visited = 0, uniq_visited = 0;
+
     generator = default_random_engine(rand());
 
-    struct timeval parse_starttime, parse_endtime;
-    gettimeofday(&parse_starttime, NULL);
+    int all_nodes = seq_length; // C's
+    for (int j = 0; j < seq_length; j ++)
+      all_nodes += bestH[j].size() + bestP[j].size() + bestM[j].size() + bestM2[j].size() + bestMulti[j].size();
+
+    struct timeval starttime, endtime;
+
+    gettimeofday(&starttime, NULL);
+    /*
+    printf("recovering hyperedges...\n");
+    if (saving_option == SAVING_FULL) {
+      for (int j = 0; j < seq_length; j++) {
+	recover_hyperedges(0, j, TYPE_C, samplestates[TYPE_C][j][0]);
+	for (int type = 1; type < 5; type ++) {
+	  for (auto & node : get_states((Type)type)[j]) {
+	    int i = node.first;
+	    //printf("recovering %d %d %d\n", i, j, type);
+	    recover_hyperedges(i, j, (Type)type, samplestates[type][j][i]);
+	  }
+	}
+      }
+      }*/
+    
+    gettimeofday(&endtime, NULL);
+    double recover_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
+    printf("recovering hyperdges time: %f secs (%d nodes)\n", recover_time, uniq_visited);
+    fflush(stdout);
+
+    gettimeofday(&starttime, NULL);
     for(int i = 0; i < sample_number; i++){
         memset(result, '.', seq_length);
         result[seq_length] = 0;
 
 	try {
 	  backtrack(0, seq_length-1, result, TYPE_C);
-	  printf("%s\n", string(result).c_str());
+	  //printf("%s\n", string(result).c_str());
 	  }
 	catch (const out_of_range & err) {
 //	  if (is_verbose)
@@ -302,10 +362,12 @@ void BeamCKYParser::sample(int sample_number){
 	}
     }   
     if(is_verbose){
-        gettimeofday(&parse_endtime, NULL);
-        double parse_elapsed_time = parse_endtime.tv_sec - parse_starttime.tv_sec + (parse_endtime.tv_usec-parse_starttime.tv_usec)/1000000.0;
-        printf("Sequence_length: %d Sample Number: %d Sample Time: %f secs\n", seq_length, sample_number, parse_elapsed_time);
+        gettimeofday(&endtime, NULL);
+        double sampling_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
+        printf("Sequence_length: %d recover time: %f secs Sample Number: %d Sample Time: %f secs  uniq_nodes: %d (%.2f%% of visits, %.2f%% of all nodes)\n",
+	       seq_length, recover_time, sample_number, sampling_time, uniq_visited, uniq_visited * 100. / visited, uniq_visited * 100. / all_nodes);
     }
+    fflush(stdout);
     cleanup();    
     return;
 }

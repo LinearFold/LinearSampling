@@ -78,6 +78,8 @@ void BeamCKYParser::prepare(unsigned len) {
     bestM2 = new unordered_map<int, State>[seq_length];
     bestMulti = new unordered_map<int, State>[seq_length];
 
+    sortedP = new map<int, State *>[seq_length];
+
     nucs = new int[seq_length];
 
     scores.reserve(seq_length); 
@@ -238,11 +240,14 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 
         // beam of P
         {
-            if (beam > 0 && beamstepP.size() > beam) beam_prune(beamstepP);
+            if (beam > 0 && beamstepP.size() > beam) beam_prune(beamstepP);	    
 
             for(auto& item : beamstepP) {
+	      
                 int i = item.first;
                 State& state = item.second;
+
+		sortedP[j][-i] = &state; // lhuang: rev sort
 
                 int nuci = nucs[i];
                 int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;

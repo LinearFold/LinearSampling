@@ -45,6 +45,13 @@ enum Type {
   TYPE_MULTI,
 };
 
+enum Saving {
+  SAVING_NON = 0,
+  SAVING_LAZY = 1,
+  SAVING_FULL = 2,
+};
+
+
 enum Manner {
   MANNER_NONE = 0,              // 0: empty
   MANNER_H,                     // 1: hairpin candidate
@@ -168,6 +175,7 @@ private:
     unsigned seq_length;
 
     unordered_map<int, State> *bestH, *bestP, *bestM2, *bestMulti, *bestM;
+  map<int, State *> *sortedP;
     State *bestC;
 
   unordered_map<int, SampleState> ** samplestates;
@@ -192,9 +200,12 @@ private:
   void backtrack(int i, int j, char* result, Type type);
   
   State & get_state(int i, int j, Type type);
+  unordered_map<int, State> * get_states(Type type);
   SampleState & get_sample_state(int i, int j, Type type);
   void recover_hyperedges(int i, int j, Type type, SampleState & samplestate);
 
+  int visited = 0, uniq_visited = 0;
+  int saving_option = SAVING_FULL;
 
 };
 
