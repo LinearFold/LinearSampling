@@ -175,10 +175,12 @@ private:
     unsigned seq_length;
 
     unordered_map<int, State> *bestH, *bestP, *bestM2, *bestMulti, *bestM;
-  map<int, State *> *sortedP;
+    // map<int, State*> *sortedP;
+    // unordered_map<map<int, State*> *sortedP;
+    vector<int> *sortedP;
     State *bestC;
 
-  unordered_map<int, SampleState> ** samplestates;
+    unordered_map<int, SampleState> ** samplestates;
 
 
     vector<int> if_tetraloops;

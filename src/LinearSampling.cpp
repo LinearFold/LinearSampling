@@ -78,7 +78,8 @@ void BeamCKYParser::prepare(unsigned len) {
     bestM2 = new unordered_map<int, State>[seq_length];
     bestMulti = new unordered_map<int, State>[seq_length];
 
-    sortedP = new map<int, State *>[seq_length];
+    // sortedP = new map<int, State*>[seq_length];
+    sortedP = new vector<int>[seq_length];
 
     nucs = new int[seq_length];
 
@@ -95,6 +96,13 @@ void BeamCKYParser::cleanup() {
 
     delete[] nucs;
 
+    delete[] next_pair;
+    delete[] prev_pair;
+
+    delete[] sortedP;
+
+    for (int i = 0; i < 5; i++)
+        delete[] samplestates[i];
     delete[] samplestates;
 }
 
@@ -247,7 +255,7 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                 int i = item.first;
                 State& state = item.second;
 
-		sortedP[j][-i] = &state; // lhuang: rev sort
+		        // sortedP[j][-i] = &state; // lhuang: rev sort
 
                 int nuci = nucs[i];
                 int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
@@ -335,6 +343,7 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                         int nucp = nucs[p];
                         int q = next_pair[nucp * seq_length + j];
                         if (q != -1 && ((i - p) + (q - j) - 2 <= SINGLE_MAX_LEN)) {
+                        // if (q != -1 && (i - p -1 <= SINGLE_MAX_LEN)) {
                             newscore = - v_score_multi_unpaired(p+1, i-1) - v_score_multi_unpaired(j+1, q-1);
                             Fast_LogPlusEquals(bestMulti[q][p].alpha, state.alpha + newscore/kT);  
                         }
@@ -382,26 +391,26 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
     gettimeofday(&parse_endtime, NULL);
     double parse_elapsed_time = parse_endtime.tv_sec - parse_starttime.tv_sec + (parse_endtime.tv_usec-parse_starttime.tv_usec)/1000000.0;
     if (is_verbose)
-      printf("inside time: %.5f secs\n", parse_elapsed_time);
+        printf("inside time: %.5f secs\n", parse_elapsed_time);
 
-    //    unsigned long nos_tot = nos_H + nos_P + nos_M2 + nos_Multi + nos_M + nos_C;
-    //    if (is_verbose)
-    //      printf("non-uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
-    //	     nos_C, nos_P, nos_M, nos_M2, nos_Multi, nos_tot - nos_H);
+        //    unsigned long nos_tot = nos_H + nos_P + nos_M2 + nos_Multi + nos_M + nos_C;
+        //    if (is_verbose)
+        //      printf("non-uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
+        //	     nos_C, nos_P, nos_M, nos_M2, nos_Multi, nos_tot - nos_H);
 
-    int nc = 0, np = 0, nm = 0, nm2 = 0, nmu = 0;
-    for (int j = 0; j < seq_length; j++) {
-      nc += 1;
-      np += bestP[j].size();
-      nm += bestM[j].size();
-      nm2 += bestM2[j].size();
-      nmu += bestMulti[j].size();
+        int nc = 0, np = 0, nm = 0, nm2 = 0, nmu = 0;
+        for (int j = 0; j < seq_length; j++) {
+            nc += 1;
+            np += bestP[j].size();
+            nm += bestM[j].size();
+            nm2 += bestM2[j].size();
+            nmu += bestMulti[j].size();
+
+    //     printf("uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
+	   //     nc, np, nm, nm2, nmu, nc+np+nm+nm2+nmu);	
+        
+    //     printf("Free Energy of Ensemble: %.2f kcal/mol\n", -kT * viterbi.alpha / 100.0);
     }
-    if (is_verbose)
-      printf("uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
-	     nc, np, nm, nm2, nmu, nc+np+nm+nm2+nmu);	
-
-    if(is_verbose) printf("Free Energy of Ensemble: %.2f kcal/mol\n", -kT * viterbi.alpha / 100.0);
 
     fflush(stdout);
 

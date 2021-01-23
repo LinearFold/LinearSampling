@@ -148,9 +148,19 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
 	
         // M2 = M + P
         //for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm
-	for (auto & item : sortedP[j]) { // map not unorderd_map
-	  int k = -item.first; // reverse sorted
-	  //printf("%d %d %d\n", i, k, j);
+
+        if(sortedP[j].size() == 0){
+          for(auto& item : bestP[j]){
+            int i = item.first;
+            sortedP[j].push_back(-i);
+          } 
+          sort(sortedP[j].begin(), sortedP[j].end());
+        }
+        
+        for (auto & item : sortedP[j]) { // map not unorderd_map
+            // int k = -item.first; // reverse sorted
+            int k = -item;
+            //printf("%d %d %d\n", i, k, j);
             if (k > i + 4) { // lhuang: +4
                 int m = k - 1;
                 auto iterator = bestM[m].find(i);
@@ -163,9 +173,26 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
                     samplestate.append(alphalist, accu_alpha, MANNER_M2_eq_M_plus_P, m);
                 }
             }
-	    else
-	      break;
+           else break;
         }
+
+	      // for (auto & item : sortedP[j]) { // map not unorderd_map
+	      //     int k = -item.first; // reverse sorted
+	      //     //printf("%d %d %d\n", i, k, j);
+       //      if (k > i + 4) { // lhuang: +4
+       //          int m = k - 1;
+       //          auto iterator = bestM[m].find(i);
+       //          if(iterator != bestM[m].end()) {
+       //              int nuck = nucs[k];
+       //              int nuck_1 = (k-1>-1) ? nucs[k-1] : -1;
+       //              value_type M1_score = - v_score_M1(k, j, j, nuck_1, nuck, nucj, nucj1, seq_length);
+                
+       //              accu_alpha = bestM[m][i].alpha + bestP[j][k].alpha + M1_score/kT - localZ;
+       //              samplestate.append(alphalist, accu_alpha, MANNER_M2_eq_M_plus_P, m);
+       //          }
+       //      }
+	      //    else break;
+       //  }
 	//printf("\n");
   }
 	break;
@@ -181,23 +208,26 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
     /*
     for (int q = j-1; q >= i + 10; --q){ // lhuang
       for(auto& item : bestM2[q]){
-	int p = item.first;
-	if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
-	  accu_alpha = bestM2[q][p].alpha - localZ;
-	  samplestate.append(alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
-	}
+      	int p = item.first;
+      	if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
+      	  accu_alpha = bestM2[q][p].alpha - localZ;
+      	  samplestate.append(alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
+	      }
       }
       if(_allowed_pairs[nuci][nucs[q]]) break;
       }
     */
-    for (int q = j - 1; q >= jprev; q --) {
-      for (int p = i+1; p <= q - 9 && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN; p++)
-	if (bestM2[q][p].alpha > -1e6) {
-	  accu_alpha = bestM2[q][p].alpha - localZ;
-          samplestate.append(alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
-	}	
-	} 
-  }
+    for (int q = j - 1; q > jprev; q--) { // hzhang: q > jprev not q >= jprev
+      for (int p = i+1; p <= q - 9 && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN; p++){
+	     // if (bestM2[q][p].alpha > -1e6) {
+       auto bestM2_iter = bestM2[q].find(p);
+       if(bestM2_iter != bestM2[q].end()){
+	       accu_alpha = bestM2[q][p].alpha - localZ;
+         samplestate.append(alphalist, accu_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
+	     }	
+     }
+	  } 
+   }
   }
   samplestate.distribution = discrete_distribution<> (alphalist.begin(), alphalist.end());
 }
@@ -353,7 +383,7 @@ void BeamCKYParser::sample(int sample_number){
 
 	try {
 	  backtrack(0, seq_length-1, result, TYPE_C);
-	  //printf("%s\n", string(result).c_str());
+	  // printf("%s\n", string(result).c_str());
 	  }
 	catch (const out_of_range & err) {
 //	  if (is_verbose)
