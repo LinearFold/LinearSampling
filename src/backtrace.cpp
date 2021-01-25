@@ -406,7 +406,7 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
       if(_allowed_pairs[nuci][nucs[q]]) break;
       }
     */
-    for (int q = j - 1; q > jprev; q--) { // hzhang: q > jprev not q >= jprev
+    for (int q = j - 1; q >= jprev; q--) { 
       for (int p = i+1; p <= q - 9 && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN; p++){
        // if (bestM2[q][p].alpha > -1e6) {
        auto bestM2_iter = bestM2[q].find(p);
