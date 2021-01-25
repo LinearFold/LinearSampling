@@ -80,6 +80,7 @@ void BeamCKYParser::prepare(unsigned len) {
 
     // sortedP = new map<int, State*>[seq_length];
     sortedP = new vector<int>[seq_length];
+    // sortedM2 = new vector<int>[seq_length];
 
     nucs = new int[seq_length];
 
@@ -100,10 +101,12 @@ void BeamCKYParser::cleanup() {
     delete[] prev_pair;
 
     delete[] sortedP;
-
+    // delete[] sortedM2;
+#ifndef non_saving
     for (int i = 0; i < 5; i++)
         delete[] samplestates[i];
     delete[] samplestates;
+#endif
 }
 
 BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
@@ -141,247 +144,246 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 
     if (!read_forest)
     {
+        if(seq_length > 0) bestC[0].alpha = 0.0;
+        if(seq_length > 1) bestC[1].alpha = 0.0;
 
-    if(seq_length > 0) bestC[0].alpha = 0.0;
-    if(seq_length > 1) bestC[1].alpha = 0.0;
+        value_type newscore;
+        // from left to right
+        for(int j = 0; j < seq_length; ++j) {
+            int nucj = nucs[j];
+            int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
 
-    value_type newscore;
-    // from left to right
-    for(int j = 0; j < seq_length; ++j) {
-        int nucj = nucs[j];
-        int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
+            unordered_map<int, State>& beamstepH = bestH[j];
+            unordered_map<int, State>& beamstepMulti = bestMulti[j];
+            unordered_map<int, State>& beamstepP = bestP[j];
+            unordered_map<int, State>& beamstepM2 = bestM2[j];
+            unordered_map<int, State>& beamstepM = bestM[j];
+            State& beamstepC = bestC[j];
 
-        unordered_map<int, State>& beamstepH = bestH[j];
-        unordered_map<int, State>& beamstepMulti = bestMulti[j];
-        unordered_map<int, State>& beamstepP = bestP[j];
-        unordered_map<int, State>& beamstepM2 = bestM2[j];
-        unordered_map<int, State>& beamstepM = bestM[j];
-        State& beamstepC = bestC[j];
-
-        // beam of H
-        {
-            if (beam > 0 && beamstepH.size() > beam) beam_prune(beamstepH);
+            // beam of H
             {
-                int jnext = next_pair[nucj * seq_length + j];
-                if (no_sharp_turn) while (jnext - j < 4 && jnext != -1) jnext = next_pair[nucj * seq_length + jnext];
-                if (jnext != -1) {
-                    int nucjnext = nucs[jnext];
-                    int nucjnext_1 = (jnext - 1) > -1 ? nucs[jnext - 1] : -1;
-
-                    int tetra_hex_tri = -1;
-#ifdef SPECIAL_HP
-                    if (jnext-j-1 == 4) // 6:tetra
-                        tetra_hex_tri = if_tetraloops[j];
-                    else if (jnext-j-1 == 6) // 8:hexa
-                        tetra_hex_tri = if_hexaloops[j];
-                    else if (jnext-j-1 == 3) // 5:tri
-                        tetra_hex_tri = if_triloops[j];
-#endif
-                    newscore = - v_score_hairpin(j, jnext, nucj, nucj1, nucjnext_1, nucjnext, tetra_hex_tri);
-                    Fast_LogPlusEquals(bestH[jnext][j].alpha, newscore/kT);
-                }
-            }
-
-            {
-                for (auto &item : beamstepH) {
-                    int i = item.first;
-                    State &state = item.second;
-                    int nuci = nucs[i];
-                    int jnext = next_pair[nuci * seq_length + j];
-
+                if (beam > 0 && beamstepH.size() > beam) beam_prune(beamstepH);
+                {
+                    int jnext = next_pair[nucj * seq_length + j];
+                    if (no_sharp_turn) while (jnext - j < 4 && jnext != -1) jnext = next_pair[nucj * seq_length + jnext];
                     if (jnext != -1) {
-                        int nuci1 = (i + 1) < seq_length ? nucs[i + 1] : -1;
                         int nucjnext = nucs[jnext];
                         int nucjnext_1 = (jnext - 1) > -1 ? nucs[jnext - 1] : -1;
 
-                        // 1. extend h(i, j) to h(i, jnext)
-
                         int tetra_hex_tri = -1;
-#ifdef SPECIAL_HP
-                        if (jnext-i-1 == 4) // 6:tetra
-                            tetra_hex_tri = if_tetraloops[i];
-                        else if (jnext-i-1 == 6) // 8:hexa
-                            tetra_hex_tri = if_hexaloops[i];
-                        else if (jnext-i-1 == 3) // 5:tri
-                            tetra_hex_tri = if_triloops[i];
-#endif
-                        newscore = - v_score_hairpin(i, jnext, nuci, nuci1, nucjnext_1, nucjnext, tetra_hex_tri);
-                        Fast_LogPlusEquals(bestH[jnext][i].alpha, newscore/kT);
+    #ifdef SPECIAL_HP
+                        if (jnext-j-1 == 4) // 6:tetra
+                            tetra_hex_tri = if_tetraloops[j];
+                        else if (jnext-j-1 == 6) // 8:hexa
+                            tetra_hex_tri = if_hexaloops[j];
+                        else if (jnext-j-1 == 3) // 5:tri
+                            tetra_hex_tri = if_triloops[j];
+    #endif
+                        newscore = - v_score_hairpin(j, jnext, nucj, nucj1, nucjnext_1, nucjnext, tetra_hex_tri);
+                        Fast_LogPlusEquals(bestH[jnext][j].alpha, newscore/kT);
                     }
+                }
 
-                    // 2. generate p(i, j)
+                {
+                    for (auto &item : beamstepH) {
+                        int i = item.first;
+                        State &state = item.second;
+                        int nuci = nucs[i];
+                        int jnext = next_pair[nuci * seq_length + j];
+
+                        if (jnext != -1) {
+                            int nuci1 = (i + 1) < seq_length ? nucs[i + 1] : -1;
+                            int nucjnext = nucs[jnext];
+                            int nucjnext_1 = (jnext - 1) > -1 ? nucs[jnext - 1] : -1;
+
+                            // 1. extend h(i, j) to h(i, jnext)
+
+                            int tetra_hex_tri = -1;
+    #ifdef SPECIAL_HP
+                            if (jnext-i-1 == 4) // 6:tetra
+                                tetra_hex_tri = if_tetraloops[i];
+                            else if (jnext-i-1 == 6) // 8:hexa
+                                tetra_hex_tri = if_hexaloops[i];
+                            else if (jnext-i-1 == 3) // 5:tri
+                                tetra_hex_tri = if_triloops[i];
+    #endif
+                            newscore = - v_score_hairpin(i, jnext, nuci, nuci1, nucjnext_1, nucjnext, tetra_hex_tri);
+                            Fast_LogPlusEquals(bestH[jnext][i].alpha, newscore/kT);
+                        }
+
+                        // 2. generate p(i, j)
+                        {
+                            Fast_LogPlusEquals(beamstepP[i].alpha, state.alpha);
+                        }
+                    }
+                }
+            }
+            if (j == 0) continue;
+
+            // beam of Multi
+            {
+                if (beam > 0 && beamstepMulti.size() > beam) beam_prune(beamstepMulti);
+                for(auto& item : beamstepMulti) {
+                    int i = item.first;
+                    State& state = item.second;
+                    int nuci = nucs[i];
+                    int nuci1 = nucs[i+1];
+                    int jnext = next_pair[nuci * seq_length + j];
+
+                    // 1. extend (i, j) to (i, jnext)
                     {
-                        Fast_LogPlusEquals(beamstepP[i].alpha, state.alpha);
+                        if (jnext != -1) {
+                            // 1. extend (i, j) to (i, jnext)
+                            
+                            newscore = - v_score_multi_unpaired(j, jnext - 1);
+                            Fast_LogPlusEquals(bestMulti[jnext][i].alpha, state.alpha + newscore/kT);
+                        }
+                    }
+
+                    // 2. generate P (i, j)
+                    {
+                        value_type score_multi = - v_score_multi(i, j, nuci, nuci1, nucs[j-1], nucj, seq_length);
+                        Fast_LogPlusEquals(beamstepP[i].alpha, state.alpha + score_multi/kT);
                     }
                 }
             }
-        }
-        if (j == 0) continue;
 
-        // beam of Multi
-        {
-            if (beam > 0 && beamstepMulti.size() > beam) beam_prune(beamstepMulti);
-            for(auto& item : beamstepMulti) {
-                int i = item.first;
-                State& state = item.second;
-                int nuci = nucs[i];
-                int nuci1 = nucs[i+1];
-                int jnext = next_pair[nuci * seq_length + j];
+            // beam of P
+            {
+                if (beam > 0 && beamstepP.size() > beam) beam_prune(beamstepP);	    
 
-                // 1. extend (i, j) to (i, jnext)
-                {
-                    if (jnext != -1) {
-                        // 1. extend (i, j) to (i, jnext)
-                        
-                        newscore = - v_score_multi_unpaired(j, jnext - 1);
-                        Fast_LogPlusEquals(bestMulti[jnext][i].alpha, state.alpha + newscore/kT);
-                    }
-                }
+                for(auto& item : beamstepP) {
+    	      
+                    int i = item.first;
+                    State& state = item.second;
 
-                // 2. generate P (i, j)
-                {
-                    value_type score_multi = - v_score_multi(i, j, nuci, nuci1, nucs[j-1], nucj, seq_length);
-                    Fast_LogPlusEquals(beamstepP[i].alpha, state.alpha + score_multi/kT);
-                }
-            }
-        }
+    		        // sortedP[j][-i] = &state; // lhuang: rev sort
 
-        // beam of P
-        {
-            if (beam > 0 && beamstepP.size() > beam) beam_prune(beamstepP);	    
+                    int nuci = nucs[i];
+                    int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
 
-            for(auto& item : beamstepP) {
-	      
-                int i = item.first;
-                State& state = item.second;
+                    // 1. generate new helix / single_branch
+                    if (i >0 && j<seq_length-1) {
+                        // value_type precomputed;
+                        // precomputed = 0;
+                        for (int p = i - 1; p >= std::max(i - SINGLE_MAX_LEN, 0); --p) {
+                            int nucp = nucs[p];
+                            int nucp1 = nucs[p + 1]; 
+                            int q = next_pair[nucp * seq_length + j];
+                            while (q != -1 && ((i - p) + (q - j) - 2 <= SINGLE_MAX_LEN)) {
+                                int nucq = nucs[q];
+                                int nucq_1 = nucs[q - 1];
 
-		        // sortedP[j][-i] = &state; // lhuang: rev sort
-
-                int nuci = nucs[i];
-                int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
-
-                // 1. generate new helix / single_branch
-                if (i >0 && j<seq_length-1) {
-                    // value_type precomputed;
-                    // precomputed = 0;
-                    for (int p = i - 1; p >= std::max(i - SINGLE_MAX_LEN, 0); --p) {
-                        int nucp = nucs[p];
-                        int nucp1 = nucs[p + 1]; 
-                        int q = next_pair[nucp * seq_length + j];
-                        while (q != -1 && ((i - p) + (q - j) - 2 <= SINGLE_MAX_LEN)) {
-                            int nucq = nucs[q];
-                            int nucq_1 = nucs[q - 1];
-
-                            if (p == i - 1 && q == j + 1) {
-                                // helix
-                                int score_single = -v_score_single(p,q,i,j, nucp, nucp1, nucq_1, nucq,
-                                                            nuci_1, nuci, nucj, nucj1);
-                                Fast_LogPlusEquals(bestP[q][p].alpha, state.alpha + score_single/kT);
-                            } else {
-                                // single branch
-                                int score_single = - v_score_single(p,q,i,j, nucp, nucp1, nucq_1, nucq,
-                                                   nuci_1, nuci, nucj, nucj1);
-                                Fast_LogPlusEquals(bestP[q][p].alpha, state.alpha + score_single/kT);
+                                if (p == i - 1 && q == j + 1) {
+                                    // helix
+                                    int score_single = -v_score_single(p,q,i,j, nucp, nucp1, nucq_1, nucq,
+                                                                nuci_1, nuci, nucj, nucj1);
+                                    Fast_LogPlusEquals(bestP[q][p].alpha, state.alpha + score_single/kT);
+                                } else {
+                                    // single branch
+                                    int score_single = - v_score_single(p,q,i,j, nucp, nucp1, nucq_1, nucq,
+                                                       nuci_1, nuci, nucj, nucj1);
+                                    Fast_LogPlusEquals(bestP[q][p].alpha, state.alpha + score_single/kT);
+                                }
+                                q = next_pair[nucp * seq_length + q];
                             }
-                            q = next_pair[nucp * seq_length + q];
                         }
                     }
-                }
-                // printf(" helix / single at %d\n", j); fflush(stdout);
+                    // printf(" helix / single at %d\n", j); fflush(stdout);
 
-                // 2. M = P
-                if(i > 0 && j < seq_length-1){
-                    int score_M1 = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
-                    Fast_LogPlusEquals(beamstepM[i].alpha, state.alpha + score_M1/kT);
-                }
-                // printf(" M = P at %d\n", j); fflush(stdout);
-
-                // 3. M2 = M + P
-                int k = i - 1;
-                if ( k > 0 && !bestM[k].empty()) {
-                    value_type M1_score = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
-                    float m1_alpha = state.alpha + M1_score/kT;
-                    for (auto &m : bestM[k]) {
-                        int newi = m.first;
-                        State& m_state = m.second;
-                        Fast_LogPlusEquals(beamstepM2[newi].alpha, m_state.alpha + m1_alpha);
+                    // 2. M = P
+                    if(i > 0 && j < seq_length-1){
+                        int score_M1 = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
+                        Fast_LogPlusEquals(beamstepM[i].alpha, state.alpha + score_M1/kT);
                     }
-                }
-                // printf(" M/M2 = M + P at %d\n", j); fflush(stdout);
+                    // printf(" M = P at %d\n", j); fflush(stdout);
 
-                // 4. C = C + P
-                {
+                    // 3. M2 = M + P
                     int k = i - 1;
-                    if (k >= 0) {
-                      State& prefix_C = bestC[k];
-                        int nuck = nuci_1;
-                        int nuck1 = nuci;
-                        int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
-                                                                nucj, nucj1, seq_length);     
-                        Fast_LogPlusEquals(beamstepC.alpha, prefix_C.alpha + state.alpha + score_external_paired/kT);  
-                    } else {
-                        int score_external_paired = - v_score_external_paired(0, j, -1, nucs[0],
-                                                                nucj, nucj1, seq_length);
-                        Fast_LogPlusEquals(beamstepC.alpha, state.alpha + score_external_paired/kT);    
+                    if ( k > 0 && !bestM[k].empty()) {
+                        value_type M1_score = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
+                        float m1_alpha = state.alpha + M1_score/kT;
+                        for (auto &m : bestM[k]) {
+                            int newi = m.first;
+                            State& m_state = m.second;
+                            Fast_LogPlusEquals(beamstepM2[newi].alpha, m_state.alpha + m1_alpha);
+                        }
                     }
-                }
-            }
-        }
-        // printf("P at %d\n", j); fflush(stdout);
+                    // printf(" M/M2 = M + P at %d\n", j); fflush(stdout);
 
-        // beam of M2
-        {
-            if (beam > 0 && beamstepM2.size() > beam) beam_prune(beamstepM2);
-
-            for(auto& item : beamstepM2) {
-                int i = item.first;
-                State& state = item.second;
-
-                // 1. multi-loop
-                {
-                    for (int p = i-1; p >= std::max(i - SINGLE_MAX_LEN, 0); --p) {
-                        int nucp = nucs[p];
-                        int q = next_pair[nucp * seq_length + j];
-                        if (q != -1 && ((i - p) + (q - j) - 2 <= SINGLE_MAX_LEN)) {
-                        // if (q != -1 && (i - p -1 <= SINGLE_MAX_LEN)) {
-                            newscore = - v_score_multi_unpaired(p+1, i-1) - v_score_multi_unpaired(j+1, q-1);
-                            Fast_LogPlusEquals(bestMulti[q][p].alpha, state.alpha + newscore/kT);  
+                    // 4. C = C + P
+                    {
+                        int k = i - 1;
+                        if (k >= 0) {
+                          State& prefix_C = bestC[k];
+                            int nuck = nuci_1;
+                            int nuck1 = nuci;
+                            int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
+                                                                    nucj, nucj1, seq_length);     
+                            Fast_LogPlusEquals(beamstepC.alpha, prefix_C.alpha + state.alpha + score_external_paired/kT);  
+                        } else {
+                            int score_external_paired = - v_score_external_paired(0, j, -1, nucs[0],
+                                                                    nucj, nucj1, seq_length);
+                            Fast_LogPlusEquals(beamstepC.alpha, state.alpha + score_external_paired/kT);    
                         }
                     }
                 }
+            }
+            // printf("P at %d\n", j); fflush(stdout);
 
-                // 2. M = M2
-                {
-                    Fast_LogPlusEquals(beamstepM[i].alpha, state.alpha);  
+            // beam of M2
+            {
+                if (beam > 0 && beamstepM2.size() > beam) beam_prune(beamstepM2);
+
+                for(auto& item : beamstepM2) {
+                    int i = item.first;
+                    State& state = item.second;
+
+                    // 1. multi-loop
+                    {
+                        for (int p = i-1; p >= std::max(i - SINGLE_MAX_LEN, 0); --p) {
+                            int nucp = nucs[p];
+                            int q = next_pair[nucp * seq_length + j];
+                            if (q != -1 && ((i - p) + (q - j) - 2 <= SINGLE_MAX_LEN)) {
+                            // if (q != -1 && (i - p -1 <= SINGLE_MAX_LEN)) {
+                                newscore = - v_score_multi_unpaired(p+1, i-1) - v_score_multi_unpaired(j+1, q-1);
+                                Fast_LogPlusEquals(bestMulti[q][p].alpha, state.alpha + newscore/kT);  
+                            }
+                        }
+                    }
+
+                    // 2. M = M2
+                    {
+                        Fast_LogPlusEquals(beamstepM[i].alpha, state.alpha);  
+                    }
                 }
             }
-        }
-        // printf("M2 at %d\n", j); fflush(stdout);
+            // printf("M2 at %d\n", j); fflush(stdout);
 
-        // beam of M
-        {
-            if (beam > 0 && beamstepM.size() > beam) beam_prune(beamstepM);
+            // beam of M
+            {
+                if (beam > 0 && beamstepM.size() > beam) beam_prune(beamstepM);
 
-            for(auto& item : beamstepM) {
-                int i = item.first;
-                State& state = item.second;
+                for(auto& item : beamstepM) {
+                    int i = item.first;
+                    State& state = item.second;
+                    if (j < seq_length-1) {
+                        newscore = - v_score_multi_unpaired(j + 1, j + 1);
+                        Fast_LogPlusEquals(bestM[j+1][i].alpha, state.alpha + newscore/kT); 
+                    }
+                }
+            }
+            // printf("M at %d\n", j); fflush(stdout);
+
+            // beam of C
+            {
                 if (j < seq_length-1) {
-                    newscore = - v_score_multi_unpaired(j + 1, j + 1);
-                    Fast_LogPlusEquals(bestM[j+1][i].alpha, state.alpha + newscore/kT); 
+                    value_type newscore;
+                    newscore = -v_score_external_unpaired(j+1, j+1);              
+                    Fast_LogPlusEquals(bestC[j+1].alpha, beamstepC.alpha + newscore/kT); 
                 }
             }
-        }
-        // printf("M at %d\n", j); fflush(stdout);
-
-        // beam of C
-        {
-            if (j < seq_length-1) {
-                value_type newscore;
-                newscore = -v_score_external_unpaired(j+1, j+1);              
-                Fast_LogPlusEquals(bestC[j+1].alpha, beamstepC.alpha + newscore/kT); 
-            }
-        }
-    }  // end of for-loo j
+        }  // end of for-loo j
     } // if there is no forest file
     else  // read forest
       load_forest();
@@ -390,7 +392,7 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 
     gettimeofday(&parse_endtime, NULL);
     double parse_elapsed_time = parse_endtime.tv_sec - parse_starttime.tv_sec + (parse_endtime.tv_usec-parse_starttime.tv_usec)/1000000.0;
-    if (is_verbose)
+    if (is_verbose){
         printf("inside time: %.5f secs\n", parse_elapsed_time);
 
         //    unsigned long nos_tot = nos_H + nos_P + nos_M2 + nos_Multi + nos_M + nos_C;
@@ -398,18 +400,19 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
         //      printf("non-uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
         //	     nos_C, nos_P, nos_M, nos_M2, nos_Multi, nos_tot - nos_H);
 
-        int nc = 0, np = 0, nm = 0, nm2 = 0, nmu = 0;
-        for (int j = 0; j < seq_length; j++) {
-            nc += 1;
-            np += bestP[j].size();
-            nm += bestM[j].size();
-            nm2 += bestM2[j].size();
-            nmu += bestMulti[j].size();
+        // int nc = 0, np = 0, nm = 0, nm2 = 0, nmu = 0;
+        // for (int j = 0; j < seq_length; j++) {
+        //     nc += 1;
+        //     np += bestP[j].size();
+        //     nm += bestM[j].size();
+        //     nm2 += bestM2[j].size();
+        //     nmu += bestMulti[j].size();
+        // }
 
     //     printf("uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
 	   //     nc, np, nm, nm2, nmu, nc+np+nm+nm2+nmu);	
         
-    //     printf("Free Energy of Ensemble: %.2f kcal/mol\n", -kT * viterbi.alpha / 100.0);
+        printf("Free Energy of Ensemble: %.2f kcal/mol\n", -kT * viterbi.alpha / 100.0);
     }
 
     fflush(stdout);

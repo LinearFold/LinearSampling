@@ -106,6 +106,7 @@ struct State {
 
 };
 
+#ifndef non_saving
 struct SampleState {
   bool visited;
   discrete_distribution<> distribution;
@@ -113,14 +114,14 @@ struct SampleState {
   SampleState(): visited(false), distribution{}, tracelist{}
   {};
 
-  void append(vector <float> & alphalist, float alpha_, Manner manner_) {
+  void append(vector<float> & alphalist, float alpha_, Manner manner_) {
       if (alpha_ > th) {
         tracelist.push_back(BackPointer(manner_));
         alphalist.push_back(Fast_Exp(alpha_));
       }
     };
 
-    void append(vector <float> & alphalist, float alpha_, Manner manner_, int split_) {
+    void append(vector<float> & alphalist, float alpha_, Manner manner_, int split_) {
       if (alpha_ > th) {
         BackPointer backpointer;
         backpointer.set(manner_, split_);
@@ -129,7 +130,7 @@ struct SampleState {
       }
     };
 
-  void append(vector <float> & alphalist, float alpha_, Manner manner_, char l1_, int l2_) {
+  void append(vector<float> & alphalist, float alpha_, Manner manner_, char l1_, int l2_) {
       if (alpha_ > th) {
         BackPointer backpointer;
         backpointer.set(manner_, l1_, l2_);
@@ -137,8 +138,8 @@ struct SampleState {
         alphalist.push_back(Fast_Exp(alpha_));
       }
     };
-  
 };
+#endif
 
 
 class BeamCKYParser {
@@ -180,9 +181,6 @@ private:
     vector<int> *sortedP;
     State *bestC;
 
-    unordered_map<int, SampleState> ** samplestates;
-
-
     vector<int> if_tetraloops;
     vector<int> if_hexaloops;
     vector<int> if_triloops;
@@ -199,12 +197,18 @@ private:
 
     // sampling
 
-  void backtrack(int i, int j, char* result, Type type);
+  int backtrack(int i, int j, char* result, Type type);
   
   State & get_state(int i, int j, Type type);
   unordered_map<int, State> * get_states(Type type);
+  
+#ifdef non_saving
+  BackPointer recover_hyperedges(int i, int j, Type type);
+#else
   SampleState & get_sample_state(int i, int j, Type type);
   void recover_hyperedges(int i, int j, Type type, SampleState & samplestate);
+  unordered_map<int, SampleState> ** samplestates;
+#endif
 
   int visited = 0, uniq_visited = 0;
   int saving_option = SAVING_FULL;

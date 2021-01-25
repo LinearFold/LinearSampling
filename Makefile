@@ -15,7 +15,8 @@ objects=bin/linearsampling_v
 linearsampling: src/LinearSampling.cpp $(DEPS) 
 		chmod +x linearsampling
 		mkdir -p bin
-		$(CC) src/LinearSampling.cpp $(CFLAGS) -o bin/linearsampling_v 
+		$(CC) src/LinearSampling.cpp $(CFLAGS) -o bin/linearsampling_lazysaving
+		$(CC) src/LinearSampling.cpp $(CFLAGS) -Dnon_saving -o bin/linearsampling_nonsaving 
 
 clean:
 	-rm $(objects)
