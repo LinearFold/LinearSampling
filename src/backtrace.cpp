@@ -56,9 +56,6 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
           return backpointer;
         }
       }
-      // printf("i= %d j= %d\n", i, j);
-      // assert(abs(accu_alpha - 1.0) < 10e-3);
-      // return BackPointer(MANNER_C_eq_C_plus_U); // precision issue; treat as C = C + U
     }
     break;
     case TYPE_P: {
@@ -122,9 +119,6 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
             return BackPointer(MANNER_P_eq_MULTI);
         }
       }
-      // printf("abs(accu_alpha - 1.0)= %f\n", abs(accu_alpha - 1.0));
-      assert(abs(accu_alpha - 1.0) < 10e-3);
-      // return BackPointer(MANNER_HAIRPIN); // precision issue: treat as hairpin
     }
     break;
     case TYPE_M: {
@@ -157,10 +151,6 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
         if(accu_alpha > sampled_alpha)
           return BackPointer(MANNER_M_eq_M2);
       }
-
-      // printf("i= %d j= %d abs(accu_alpha - 1.0)= %f\n", i, j, abs(accu_alpha - 1.0));
-      // assert(abs(accu_alpha - 1.0) < 10e-3);
-      // return BackPointer(MANNER_M_eq_M_plus_U); // precision issue: treat as M = M + U
     }
     break;
     case TYPE_M2: {
@@ -195,8 +185,6 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
         }
         else break;
       }
-      // printf("abs(accu_alpha - 1.0)= %f\n", abs(accu_alpha - 1.0));
-      // assert(abs(accu_alpha - 1.0) < 10e-3);
     }
     break;
     case TYPE_MULTI: {
@@ -226,8 +214,6 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
          }  
        }
       }
-      // printf("abs(accu_alpha - 1.0)= %f\n", abs(accu_alpha - 1.0));
-      // assert(abs(accu_alpha - 1.0) < 10e-3);
     }
     break;
     // default: // MANNER_NONE or other cases

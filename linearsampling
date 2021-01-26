@@ -23,9 +23,7 @@ def main():
     is_sharpturn = '1' if FLAGS.sharpturn else '0'
     is_verbose = '1' if FLAGS.verbose else '0'
     sample_number = str(FLAGS.sample_number)
-    read_forest = '1' if FLAGS.read_forest else '0'
-    # assert not (FLAGS.full_saving and FLAGS.no_saving)  # can only use one saving option 
-    # saving_option = 0 if FLAGS.saving_mode == "lazy" else (2 if FLAGS.saving_mode == "full" else 1) 
+    read_forest = '1' if FLAGS.read_forest else '0' 
 
     path = os.path.dirname(os.path.abspath(__file__))
     cmd = ["%s/%s" % (path, ('bin/linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #saving_option
