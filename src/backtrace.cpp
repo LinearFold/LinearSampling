@@ -218,7 +218,7 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
     break;
     // default: // MANNER_NONE or other cases
   }
-  printf("accu_alpha= %f Type= %u\n", accu_alpha, type);
+  // printf("accu_alpha= %f Type= %u\n", accu_alpha, type);
   return BackPointer();
 }
 #else
