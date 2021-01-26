@@ -573,9 +573,9 @@ void BeamCKYParser::sample(int sample_number){
     fflush(stdout);
 
     gettimeofday(&starttime, NULL);
-    int count= 0;
+    // int count= 0;
     for(int i = 0; i < sample_number; i++){
-      count ++;
+      // count ++;
       memset(result, '.', seq_length);
       result[seq_length] = 0;
       try {
@@ -589,7 +589,7 @@ void BeamCKYParser::sample(int sample_number){
         i--; // NB: hit vector index out of range exception
       }
     }   
-    printf("count = %d\n", count);
+    // printf("count = %d\n", count);
     if(is_verbose){
         gettimeofday(&endtime, NULL);
         double sampling_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;

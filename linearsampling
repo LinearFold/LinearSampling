@@ -13,9 +13,8 @@ def setgflags():
     flags.DEFINE_boolean('verbose', False, "print out energy of each loop in the structure, (DEFAULT=FALSE)")
     flags.DEFINE_integer('sample_number', 10, "sample number, (DEFAULT=10)", short_name='k') 
     flags.DEFINE_boolean('read_forest', False, "read forest from STDIN (DEFAULT=FALSE)", short_name="f")
-    flags.DEFINE_boolean('saving_mode', False, "non_saving (non): do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000; \
-                                                lazy_saving (lazy): do not save any hyperedges during sampling, but recover and save hyperedges only once when needed; \
-                                                (DEFAULT=lazy)", short_name='s')
+    flags.DEFINE_boolean('non_saving', False, "non_saving (non): do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000; \
+                                                (DEFAULT=False)")
     # flags.DEFINE_boolean('no_saving', False, "do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000 (DEFAULT=FALSE)")
     argv = FLAGS(sys.argv)
 
@@ -29,7 +28,7 @@ def main():
     # saving_option = 0 if FLAGS.saving_mode == "lazy" else (2 if FLAGS.saving_mode == "full" else 1) 
 
     path = os.path.dirname(os.path.abspath(__file__))
-    cmd = ["%s/%s" % (path, ('bin/linearsampling_lazysaving' if FLAGS.saving_mode == "lazy" else 'bin/linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #saving_option
+    cmd = ["%s/%s" % (path, ('bin/linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #saving_option
     subprocess.call(cmd, stdin=sys.stdin)
     
 if __name__ == '__main__':

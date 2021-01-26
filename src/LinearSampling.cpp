@@ -524,6 +524,9 @@ int main(int argc, char** argv){
             BeamCKYParser parser(beamsize, !sharpturn, is_verbose, read_forest);
 
             parser.parse(seq); // inside
+// #ifndef non_saving
+    
+// #endif
 
 	    parser.sample(sample_number);
 
@@ -535,6 +538,5 @@ int main(int argc, char** argv){
         double total_elapsed_time = total_endtime.tv_sec - total_starttime.tv_sec + (total_endtime.tv_usec-total_starttime.tv_usec)/1000000.0;
         printf("Total Time: %f\n", total_elapsed_time);
     }
-
     return 0;
 }
