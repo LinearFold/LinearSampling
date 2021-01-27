@@ -27,6 +27,7 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
   float localZ = state.alpha;
   
   float accu_alpha = 0.0;
+  float temp_alpha;
 
   switch(type) {
     case TYPE_C: {
@@ -34,9 +35,12 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
       int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
     
       // C = C + U
-      accu_alpha += Fast_Exp(bestC[j-1].alpha - localZ);
-      if(accu_alpha > sampled_alpha) {
-          return BackPointer(MANNER_C_eq_C_plus_U);
+      temp_alpha = bestC[j-1].alpha - localZ;
+      if (temp_alpha > th){
+        accu_alpha += Fast_Exp(temp_alpha);
+        if(accu_alpha > sampled_alpha) {
+            return BackPointer(MANNER_C_eq_C_plus_U);
+        }
       }
       // C = C + P
       for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
@@ -50,10 +54,13 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
         int nuck1 = nuci;
         int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
                     nucj, nucj1, seq_length);
-        accu_alpha += Fast_Exp(((k >= 0) ? bestC[k].alpha : 0) + state.alpha + score_external_paired/kT - localZ);
-        if(accu_alpha > sampled_alpha) {
-          backpointer.set(MANNER_C_eq_C_plus_P, k);
-          return backpointer;
+        temp_alpha = ((k >= 0) ? bestC[k].alpha : 0) + state.alpha + score_external_paired/kT - localZ;
+        if (temp_alpha > th){
+          accu_alpha += Fast_Exp(temp_alpha);
+          if(accu_alpha > sampled_alpha) {
+            backpointer.set(MANNER_C_eq_C_plus_P, k);
+            return backpointer;
+          }
         }
       }
     }
@@ -80,13 +87,16 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
           
           int score_single = -v_score_single(i,j,p,q, nuci, nuci1, nucj_1, nucj,
                nucp_1, nucp, nucq, nucq1); // same for vienna
-          accu_alpha += Fast_Exp(bestP[q][p].alpha + score_single/kT - localZ);
-          if(accu_alpha > sampled_alpha) {
-            if (((p - i) == 1) && ((j - q) == 1))
-              return BackPointer(MANNER_HELIX);
-            else{
-              backpointer.set(MANNER_SINGLE, static_cast<char>(p - i), j - q);
-              return backpointer;
+          temp_alpha = bestP[q][p].alpha + score_single/kT - localZ;
+          if (temp_alpha > th){
+            accu_alpha += Fast_Exp(temp_alpha);
+            if(accu_alpha > sampled_alpha) {
+              if (((p - i) == 1) && ((j - q) == 1))
+                return BackPointer(MANNER_HELIX);
+              else{
+                backpointer.set(MANNER_SINGLE, static_cast<char>(p - i), j - q);
+                return backpointer;
+              }
             }
           }
         }
@@ -105,18 +115,24 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
           tetra_hex_tri = if_triloops[i];
 #endif
       newscore = - v_score_hairpin(i, j, nuci, nuci1, nucj_1, nucj, tetra_hex_tri);
-      accu_alpha += Fast_Exp(newscore/kT - localZ);
-      if(accu_alpha > sampled_alpha) {
-        return BackPointer(MANNER_HAIRPIN);
+      temp_alpha = newscore/kT - localZ;
+      if (temp_alpha > th){
+        accu_alpha += Fast_Exp(temp_alpha);
+        if(accu_alpha > sampled_alpha) {
+          return BackPointer(MANNER_HAIRPIN);
+        }
       }
 
       // Multiloop
       auto iterator = bestMulti[j].find (i);
       if(iterator != bestMulti[j].end()) {
         int score_multi = - v_score_multi(i, j, nuci, nuci1, nucj_1, nucj, seq_length);
-        accu_alpha += Fast_Exp(bestMulti[j][i].alpha + score_multi/kT - localZ);
-        if(accu_alpha > sampled_alpha) {
-            return BackPointer(MANNER_P_eq_MULTI);
+        temp_alpha = bestMulti[j][i].alpha + score_multi/kT - localZ;
+        if (temp_alpha > th){
+          accu_alpha += Fast_Exp(temp_alpha);
+          if(accu_alpha > sampled_alpha) {
+              return BackPointer(MANNER_P_eq_MULTI);
+          }
         }
       }
     }
@@ -130,26 +146,35 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
       // M = M + U
       auto iterator = bestM[j-1].find(i);
       if(j > i+1 && iterator != bestM[j-1].end()) {
-        accu_alpha += Fast_Exp(bestM[j-1][i].alpha - localZ);
-        if(accu_alpha > sampled_alpha)
-          return BackPointer(MANNER_M_eq_M_plus_U);
+        temp_alpha = bestM[j-1][i].alpha - localZ;
+        if (temp_alpha > th){
+          accu_alpha += Fast_Exp(temp_alpha);
+          if(accu_alpha > sampled_alpha)
+            return BackPointer(MANNER_M_eq_M_plus_U);
+        }
       }
 
       // M = P
       iterator = bestP[j].find(i);
       if(iterator != bestP[j].end()) {
           int M1_score = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
-          accu_alpha += Fast_Exp(bestP[j][i].alpha + M1_score/kT - localZ);
-          if(accu_alpha > sampled_alpha)
-            return BackPointer(MANNER_M_eq_P);
+          temp_alpha = bestP[j][i].alpha + M1_score/kT - localZ;
+          if (temp_alpha > th){
+            accu_alpha += Fast_Exp(temp_alpha);
+            if(accu_alpha > sampled_alpha)
+              return BackPointer(MANNER_M_eq_P);
+          }
       }
 
       // M = M2
       iterator = bestM2[j].find(i);
       if(iterator != bestM2[j].end()) {
-        accu_alpha += Fast_Exp(bestM2[j][i].alpha - localZ);
-        if(accu_alpha > sampled_alpha)
-          return BackPointer(MANNER_M_eq_M2);
+        temp_alpha = bestM2[j][i].alpha - localZ;
+          if (temp_alpha > th){
+          accu_alpha += Fast_Exp(temp_alpha);
+          if(accu_alpha > sampled_alpha)
+            return BackPointer(MANNER_M_eq_M2);
+        }
       }
     }
     break;
@@ -176,10 +201,13 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
                 int nuck = nucs[k];
                 int nuck_1 = (k-1>-1) ? nucs[k-1] : -1;
                 value_type M1_score = - v_score_M1(k, j, j, nuck_1, nuck, nucj, nucj1, seq_length);
-                accu_alpha += Fast_Exp(bestM[m][i].alpha + bestP[j][k].alpha + M1_score/kT - localZ);
-                if(accu_alpha > sampled_alpha) {
-                    backpointer.set(MANNER_M2_eq_M_plus_P, m);
-                  return backpointer;
+                temp_alpha = bestM[m][i].alpha + bestP[j][k].alpha + M1_score/kT - localZ;
+                if (temp_alpha > th){
+                  accu_alpha += Fast_Exp(temp_alpha);
+                  if(accu_alpha > sampled_alpha) {
+                      backpointer.set(MANNER_M2_eq_M_plus_P, m);
+                    return backpointer;
+                  }
                 }
             }
         }
@@ -193,10 +221,13 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
       int jprev = prev_pair[nuci * seq_length + j];
       auto iterator = bestMulti[jprev].find (i);
       if (jprev > i+10 && iterator != bestMulti[jprev].end()) { // no sharp turn 
-        accu_alpha += Fast_Exp(bestMulti[jprev][i].alpha - localZ);
-        if(accu_alpha > sampled_alpha) {
+        temp_alpha = bestMulti[jprev][i].alpha - localZ;
+        if (temp_alpha > th){
+          accu_alpha += Fast_Exp(temp_alpha);
+          if(accu_alpha > sampled_alpha) {
             backpointer.set(MANNER_MULTI_JUMP, jprev);
-          return backpointer;
+            return backpointer;
+          }
         }
       }
 
@@ -206,11 +237,14 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
          // if (bestM2[q][p].alpha > -1e6) {
          auto bestM2_iter = bestM2[q].find(p);
          if(bestM2_iter != bestM2[q].end()){
-            accu_alpha += Fast_Exp(bestM2[q][p].alpha - localZ);
+          temp_alpha = bestM2[q][p].alpha - localZ;
+          if (temp_alpha > th){
+            accu_alpha += Fast_Exp(temp_alpha);
             if(accu_alpha > sampled_alpha) {
               backpointer.set(MANNER_MULTI, static_cast<char>(p - i), j - q);
               return backpointer;
             }
+          }
          }  
        }
       }
@@ -567,7 +601,7 @@ void BeamCKYParser::sample(int sample_number){
       try {
         int flag = backtrack(0, seq_length-1, result, TYPE_C);
         if(flag == -1) i--;
-        else printf("%s\n", string(result).c_str());
+        // else printf("%s\n", string(result).c_str());
       }
       catch (const out_of_range & err) {
         // if (is_verbose)

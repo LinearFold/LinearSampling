@@ -34,7 +34,7 @@
 using namespace std;
 
 typedef int value_type;
-#define VALUE_MIN numeric_limits<double>::lowest()
+#define VALUE_MIN numeric_limits<float>::lowest()
 
 
 enum Type {
