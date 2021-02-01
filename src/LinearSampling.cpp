@@ -33,7 +33,6 @@ unsigned long quickselect_partition(vector<pair<float, int>>& scores, unsigned l
         while (scores[upper].first > pivot) --upper;
         if (scores[lower].first == scores[upper].first) ++lower;
         else if (lower < upper) swap(scores[lower], scores[upper]);
-
     }
     return upper;
 }
@@ -63,27 +62,19 @@ float BeamCKYParser::beam_prune(std::unordered_map<int, State> &beamstep) {
     for (auto &p : scores) {
         if (p.first < threshold) beamstep.erase(p.second);
     }
-
     return threshold;
 }
 
 void BeamCKYParser::prepare(unsigned len) {
     seq_length = len;
-
     bestC = new State[seq_length];
-
     bestH = new unordered_map<int, State>[seq_length];
     bestP = new unordered_map<int, State>[seq_length];
     bestM = new unordered_map<int, State>[seq_length];
     bestM2 = new unordered_map<int, State>[seq_length];
     bestMulti = new unordered_map<int, State>[seq_length];
-
-    // sortedP = new map<int, State*>[seq_length];
     sortedP = new vector<int>[seq_length];
-    // sortedM2 = new vector<int>[seq_length];
-
     nucs = new int[seq_length];
-
     scores.reserve(seq_length); 
 }
 
@@ -94,14 +85,10 @@ void BeamCKYParser::cleanup() {
     delete[] bestM;  
     delete[] bestM2;  
     delete[] bestMulti;  
-
     delete[] nucs;
-
     delete[] next_pair;
     delete[] prev_pair;
-
     delete[] sortedP;
-    // delete[] sortedM2;
 #ifndef non_saving
     for (int i = 0; i < 5; i++)
         delete[] samplestates[i];
@@ -136,7 +123,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
             }
         }
     }
-
 
 #ifdef SPECIAL_HP
     v_init_tetra_hex_tri(seq, seq_length, if_tetraloops, if_hexaloops, if_triloops);
@@ -233,8 +219,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                     // 1. extend (i, j) to (i, jnext)
                     {
                         if (jnext != -1) {
-                            // 1. extend (i, j) to (i, jnext)
-                            
                             newscore = - v_score_multi_unpaired(j, jnext - 1);
                             Fast_LogPlusEquals(bestMulti[jnext][i].alpha, state.alpha + newscore/kT);
                         }
@@ -250,22 +234,16 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 
             // beam of P
             {
-                if (beam > 0 && beamstepP.size() > beam) beam_prune(beamstepP);	    
+                if (beam > 0 && beamstepP.size() > beam) beam_prune(beamstepP);     
 
                 for(auto& item : beamstepP) {
-    	      
                     int i = item.first;
                     State& state = item.second;
-
-    		        // sortedP[j][-i] = &state; // lhuang: rev sort
-
                     int nuci = nucs[i];
                     int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
 
                     // 1. generate new helix / single_branch
                     if (i >0 && j<seq_length-1) {
-                        // value_type precomputed;
-                        // precomputed = 0;
                         for (int p = i - 1; p >= std::max(i - SINGLE_MAX_LEN, 0); --p) {
                             int nucp = nucs[p];
                             int nucp1 = nucs[p + 1]; 
@@ -289,14 +267,12 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                             }
                         }
                     }
-                    // printf(" helix / single at %d\n", j); fflush(stdout);
 
                     // 2. M = P
                     if(i > 0 && j < seq_length-1){
                         int score_M1 = - v_score_M1(i, j, j, nuci_1, nuci, nucj, nucj1, seq_length);
                         Fast_LogPlusEquals(beamstepM[i].alpha, state.alpha + score_M1/kT);
                     }
-                    // printf(" M = P at %d\n", j); fflush(stdout);
 
                     // 3. M2 = M + P
                     int k = i - 1;
@@ -309,7 +285,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                             Fast_LogPlusEquals(beamstepM2[newi].alpha, m_state.alpha + m1_alpha);
                         }
                     }
-                    // printf(" M/M2 = M + P at %d\n", j); fflush(stdout);
 
                     // 4. C = C + P
                     {
@@ -329,7 +304,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                     }
                 }
             }
-            // printf("P at %d\n", j); fflush(stdout);
 
             // beam of M2
             {
@@ -345,7 +319,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                             int nucp = nucs[p];
                             int q = next_pair[nucp * seq_length + j];
                             if (q != -1 && ((i - p) + (q - j) - 2 <= SINGLE_MAX_LEN)) {
-                            // if (q != -1 && (i - p -1 <= SINGLE_MAX_LEN)) {
                                 newscore = - v_score_multi_unpaired(p+1, i-1) - v_score_multi_unpaired(j+1, q-1);
                                 Fast_LogPlusEquals(bestMulti[q][p].alpha, state.alpha + newscore/kT);  
                             }
@@ -358,7 +331,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                     }
                 }
             }
-            // printf("M2 at %d\n", j); fflush(stdout);
 
             // beam of M
             {
@@ -373,7 +345,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                     }
                 }
             }
-            // printf("M at %d\n", j); fflush(stdout);
 
             // beam of C
             {
@@ -385,33 +356,14 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
             }
         }  // end of for-loo j
     } // if there is no forest file
-    else  // read forest
-      load_forest();
+    else load_forest(); // read forest
 
     State& viterbi = bestC[seq_length-1];
 
     gettimeofday(&parse_endtime, NULL);
     double parse_elapsed_time = parse_endtime.tv_sec - parse_starttime.tv_sec + (parse_endtime.tv_usec-parse_starttime.tv_usec)/1000000.0;
     if (is_verbose){
-        printf("inside time: %.5f secs\n", parse_elapsed_time);
-
-        //    unsigned long nos_tot = nos_H + nos_P + nos_M2 + nos_Multi + nos_M + nos_C;
-        //    if (is_verbose)
-        //      printf("non-uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
-        //	     nos_C, nos_P, nos_M, nos_M2, nos_Multi, nos_tot - nos_H);
-
-        // int nc = 0, np = 0, nm = 0, nm2 = 0, nmu = 0;
-        // for (int j = 0; j < seq_length; j++) {
-        //     nc += 1;
-        //     np += bestP[j].size();
-        //     nm += bestM[j].size();
-        //     nm2 += bestM2[j].size();
-        //     nmu += bestMulti[j].size();
-        // }
-
-    //     printf("uniq: C %d P %d M %d M2 %d Multi %d tot %d\n",
-	   //     nc, np, nm, nm2, nmu, nc+np+nm+nm2+nmu);	
-        
+        printf("Partition Function Time: %.5f secs\n", parse_elapsed_time);
         printf("Free Energy of Ensemble: %.2f kcal/mol\n", -kT * viterbi.alpha / 100.0);
     }
 
@@ -421,50 +373,42 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 }
 
 void BeamCKYParser::load_forest() {  
-  string line, type;
-  int i, j;
-  unordered_map<string, unordered_map<int, State> * > states;
-  states["P"] = bestP;
-  states["M"] = bestM;
-  states["M2"] = bestM2;
-  states["Multi"] = bestMulti;  
+    string line, type;
+    int i, j;
+    unordered_map<string, unordered_map<int, State> * > states;
+    states["P"] = bestP;
+    states["M"] = bestM;
+    states["M2"] = bestM2;
+    states["Multi"] = bestMulti;  
 
-  struct timeval forest_starttime, forest_endtime;
+    struct timeval forest_starttime, forest_endtime;
 
-  gettimeofday(&forest_starttime, NULL);
-  int num_nodes = 0;
-  while (true) {
-    if (!getline(cin, line)) break;
-    num_nodes ++;
-    istringstream iss(line);    
-    iss >> type;
-    if (type == "E") 
-      iss >> j >> bestC[j-1].alpha;
-    else  // P M M2 Multi
-      iss >> i >> j >> states[type][j-1][i-1].alpha;
-  }
+    gettimeofday(&forest_starttime, NULL);
+    int num_nodes = 0;
+    while (true) {
+        if (!getline(cin, line)) break;
+        num_nodes ++;
+        istringstream iss(line);    
+        iss >> type;
+        if (type == "E") iss >> j >> bestC[j-1].alpha;
+        else  iss >> i >> j >> states[type][j-1][i-1].alpha; // P M M2 Multi
+    }
 
-  gettimeofday(&forest_endtime, NULL);
-  double forest_elapsed_time = forest_endtime.tv_sec - forest_starttime.tv_sec + (forest_endtime.tv_usec-forest_starttime.tv_usec)/1000000.0;
+    gettimeofday(&forest_endtime, NULL);
+    double forest_elapsed_time = forest_endtime.tv_sec - forest_starttime.tv_sec + (forest_endtime.tv_usec-forest_starttime.tv_usec)/1000000.0;
 
-  printf("forest of %d nodes loaded in %.1f secs.\n", num_nodes, forest_elapsed_time);
-
+    printf("forest of %d nodes loaded in %.1f secs.\n", num_nodes, forest_elapsed_time);
 }
 
 BeamCKYParser::BeamCKYParser(int beam_size,
                              bool nosharpturn,
                              bool verbose,
-			     bool readforest)
+                             bool readforest)
     : beam(beam_size), 
       no_sharp_turn(nosharpturn), 
       is_verbose(verbose),
       read_forest(readforest) {
-#ifdef lv
-        initialize();
-#else
-        initialize();
-        initialize_cachesingle();
-#endif
+    initialize();
 }
 
 
@@ -473,7 +417,6 @@ BeamCKYParser::BeamCKYParser(int beam_size,
 int main(int argc, char** argv){
 
     srand(std::chrono::system_clock::now().time_since_epoch().count()); // lhuang: not time(NULL)!
-
 
     struct timeval total_starttime, total_endtime;
     gettimeofday(&total_starttime, NULL);
@@ -489,7 +432,7 @@ int main(int argc, char** argv){
         sharpturn = atoi(argv[2]) == 1;
         is_verbose = atoi(argv[3]) == 1;
         sample_number = atoi(argv[4]);
-	read_forest = atoi(argv[5]) == 1;
+        read_forest = atoi(argv[5]) == 1;
     }
 
     // variables for decoding
@@ -524,19 +467,15 @@ int main(int argc, char** argv){
             BeamCKYParser parser(beamsize, !sharpturn, is_verbose, read_forest);
 
             parser.parse(seq); // inside
-// #ifndef non_saving
-    
-// #endif
 
-	    parser.sample(sample_number);
-
+            parser.sample(sample_number);
         }
     }
 
     if(is_verbose){
         gettimeofday(&total_endtime, NULL);
         double total_elapsed_time = total_endtime.tv_sec - total_starttime.tv_sec + (total_endtime.tv_usec-total_starttime.tv_usec)/1000000.0;
-        printf("Total Time: %f\n", total_elapsed_time);
+        printf("Total Time: %f secs\n", total_elapsed_time);
     }
     return 0;
 }

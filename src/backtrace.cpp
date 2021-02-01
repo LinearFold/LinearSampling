@@ -250,9 +250,7 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
       }
     }
     break;
-    // default: // MANNER_NONE or other cases
   }
-  // printf("accu_alpha= %f Type= %u\n", accu_alpha, type);
   return BackPointer();
 }
 #else
@@ -379,9 +377,6 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
     int nucj = nucs[j];
     int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
 
-    // M2 = M + P
-    //for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm
-
     if(sortedP[j].size() == 0){
       for(auto const& item : bestP[j])
         sortedP[j].push_back(-item.first);
@@ -414,18 +409,7 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
       edge_alpha = bestMulti[jprev][i].alpha - localZ;
       samplestate.append(alphalist, edge_alpha, MANNER_MULTI_JUMP, jprev);
     }
-    /*
-    for (int q = j-1; q >= i + 10; --q){ // lhuang
-      for(auto& item : bestM2[q]){
-        int p = item.first;
-        if(p > i && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN){
-          edge_alpha = bestM2[q][p].alpha - localZ;
-          samplestate.append(alphalist, edge_alpha, MANNER_MULTI, static_cast<char>(p - i), j - q);
-        }
-      }
-      if(_allowed_pairs[nuci][nucs[q]]) break;
-      }
-    */
+
     for (int q = j - 1; q >= jprev; q--) { 
       for (int p = i+1; p <= q - 9 && (p - i) + (j - q) - 2 <= SINGLE_MAX_LEN; p++){
        // if (bestM2[q][p].alpha > -1e6) {
@@ -544,8 +528,6 @@ int BeamCKYParser::backtrack(int i, int j, char* result, Type type){
         backtrack(k+1, j, result, TYPE_P);
     break;
         default:  // MANNER_NONE or other cases
-        // printf("wrong manner at %d, %d: manner %d\n", i, j, backpointer.manner); fflush(stdout);
-        // assert(false);
         return -1;
         }
     return 0;
@@ -572,24 +554,9 @@ void BeamCKYParser::sample(int sample_number){
     struct timeval starttime, endtime;
 
     gettimeofday(&starttime, NULL);
-    /*
-    printf("recovering hyperedges...\n");
-    if (saving_option == SAVING_FULL) {
-      for (int j = 0; j < seq_length; j++) {
-        recover_hyperedges(0, j, TYPE_C, samplestates[TYPE_C][j][0]);
-        for (int type = 1; type < 5; type ++) {
-          for (auto & node : get_states((Type)type)[j]) {
-            int i = node.first;
-            //printf("recovering %d %d %d\n", i, j, type);
-            recover_hyperedges(i, j, (Type)type, samplestates[type][j][i]);
-          }
-        }
-      }
-    }*/
     
     gettimeofday(&endtime, NULL);
     double recover_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
-    printf("recovering hyperdges time: %f secs (%d nodes)\n", recover_time, uniq_visited);
     fflush(stdout);
 
     gettimeofday(&starttime, NULL);
@@ -601,15 +568,12 @@ void BeamCKYParser::sample(int sample_number){
       try {
         int flag = backtrack(0, seq_length-1, result, TYPE_C);
         if(flag == -1) i--;
-        // else printf("%s\n", string(result).c_str());
+        else printf("%s\n", string(result).c_str());
       }
       catch (const out_of_range & err) {
-        // if (is_verbose)
-        // printf("empty tracelist\n");
         i--; // NB: hit vector index out of range exception
       }
-    }   
-    // printf("count = %d\n", count);
+    } 
     if(is_verbose){
         gettimeofday(&endtime, NULL);
         double sampling_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
