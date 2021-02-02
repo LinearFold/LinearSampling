@@ -35,6 +35,8 @@ BackPointer BeamCKYParser::recover_hyperedges(int i, int j, Type type){
       int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
     
       // C = C + U
+      if (j == 0) return BackPointer(MANNER_C_eq_C_plus_U); // hzhang: N.B. j == 0
+
       temp_alpha = bestC[j-1].alpha - localZ;
       if (temp_alpha > th){
         accu_alpha += Fast_Exp(temp_alpha);
@@ -270,22 +272,26 @@ void BeamCKYParser::recover_hyperedges(int i, int j, Type type, SampleState & sa
     int nucj1 = (j+1) < seq_length ? nucs[j+1] : -1;
   
     // C = C + U
-    edge_alpha = bestC[j-1].alpha - localZ; // lhuang: j == 0?
-    samplestate.append(alphalist, edge_alpha, MANNER_C_eq_C_plus_U);
-    // C = C + P
-    for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
-      int i = item.first;
-      State& state = item.second;
-      int nuci = nucs[i];
-      int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
+    if (j == 0) samplestate.append(alphalist, 0.0, MANNER_C_eq_C_plus_U); // hzhang: N.B. j == 0
 
-      int k = i - 1;
-      int nuck = nuci_1;
-      int nuck1 = nuci;
-      int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
-                  nucj, nucj1, seq_length);
-      edge_alpha = ((k >= 0) ? bestC[k].alpha : 0) + state.alpha + score_external_paired/kT - localZ; // lhuang?
-      samplestate.append(alphalist, edge_alpha, MANNER_C_eq_C_plus_P, k);
+    else{
+      edge_alpha = bestC[j-1].alpha - localZ; // lhuang: j == 0?
+      samplestate.append(alphalist, edge_alpha, MANNER_C_eq_C_plus_U);
+      // C = C + P
+      for(auto& item : bestP[j]){ // hzhang: can apply BOUSTROPHEDON algorithm 
+        int i = item.first;
+        State& state = item.second;
+        int nuci = nucs[i];
+        int nuci_1 = (i-1>-1) ? nucs[i-1] : -1;
+
+        int k = i - 1;
+        int nuck = nuci_1;
+        int nuck1 = nuci;
+        int score_external_paired = - v_score_external_paired(k+1, j, nuck, nuck1,
+                    nucj, nucj1, seq_length);
+        edge_alpha = ((k >= 0) ? bestC[k].alpha : 0) + state.alpha + score_external_paired/kT - localZ; // lhuang?
+        samplestate.append(alphalist, edge_alpha, MANNER_C_eq_C_plus_P, k);
+      }
     }
   }
   break;
@@ -462,75 +468,73 @@ int BeamCKYParser::backtrack(int i, int j, char* result, Type type){
 #else
   SampleState& samplestate = samplestates[type][j][i]; //get_sample_state(i, j, type);
   visited ++;
-  
   if (!samplestate.visited)
     recover_hyperedges(i, j, type, samplestate);
-    
-    BackPointer backpointer = samplestate.tracelist.at(samplestate.distribution(generator)); // lhuang: buggy: vector index out of range for empty tracelist
+  BackPointer backpointer = samplestate.tracelist.at(samplestate.distribution(generator)); // lhuang: buggy: vector index out of range for empty tracelist
 #endif
 
-    int p, q, k;
-    switch(backpointer.manner) {
-      case MANNER_HAIRPIN:
-        result[i] = '(';
-        result[j] = ')';
-        break;
-      case MANNER_SINGLE:
-        result[i] = '(';
-        result[j] = ')';
-        p = i + backpointer.trace.paddings.l1;
-        q = j - backpointer.trace.paddings.l2;
-        backtrack(p, q, result, TYPE_P);
-        break;
-      case MANNER_HELIX:
-        result[i] = '(';
-        result[j] = ')';
-        p = i + 1;
-        q = j - 1;
-        backtrack(p, q, result, TYPE_P);
-        break;
-      case MANNER_MULTI: 
-        p = i + backpointer.trace.paddings.l1;
-        q = j - backpointer.trace.paddings.l2;
-        backtrack(p, q, result, TYPE_M2);
-        break;
-      case MANNER_MULTI_JUMP:
-        k = backpointer.trace.split;
-        backtrack(i, k, result, TYPE_MULTI);
-        break;
-      case MANNER_P_eq_MULTI:
-        result[i] = '(';
-        result[j] = ')';
-        backtrack(i, j, result, TYPE_MULTI);
-        break;
-      case MANNER_M2_eq_M_plus_P:
-        k = backpointer.trace.split;
-        backtrack(i, k, result, TYPE_M);
-        backtrack(k+1, j, result, TYPE_P);
-        break;
-      case MANNER_M_eq_M2:
-        backtrack(i, j, result, TYPE_M2);
-        break;
-      case MANNER_M_eq_M_plus_U:
-        backtrack(i, j-1, result, TYPE_M);
-        break;
-      case MANNER_M_eq_P:
-        backtrack(i, j, result, TYPE_P);
-        break;
-      case MANNER_C_eq_C_plus_U:
-        k = j - 1;
-        if (k != -1) backtrack(0, k, result, TYPE_C);
-        break;
-      case MANNER_C_eq_C_plus_P:
-        k = backpointer.trace.split;
-        if (k != -1) //lhuang
-          backtrack(0, k, result, TYPE_C);
-        backtrack(k+1, j, result, TYPE_P);
-    break;
-        default:  // MANNER_NONE or other cases
-        return -1;
-        }
-    return 0;
+  int p, q, k;
+  switch(backpointer.manner) {
+    case MANNER_HAIRPIN:
+      result[i] = '(';
+      result[j] = ')';
+      break;
+    case MANNER_SINGLE:
+      result[i] = '(';
+      result[j] = ')';
+      p = i + backpointer.trace.paddings.l1;
+      q = j - backpointer.trace.paddings.l2;
+      backtrack(p, q, result, TYPE_P);
+      break;
+    case MANNER_HELIX:
+      result[i] = '(';
+      result[j] = ')';
+      p = i + 1;
+      q = j - 1;
+      backtrack(p, q, result, TYPE_P);
+      break;
+    case MANNER_MULTI: 
+      p = i + backpointer.trace.paddings.l1;
+      q = j - backpointer.trace.paddings.l2;
+      backtrack(p, q, result, TYPE_M2);
+      break;
+    case MANNER_MULTI_JUMP:
+      k = backpointer.trace.split;
+      backtrack(i, k, result, TYPE_MULTI);
+      break;
+    case MANNER_P_eq_MULTI:
+      result[i] = '(';
+      result[j] = ')';
+      backtrack(i, j, result, TYPE_MULTI);
+      break;
+    case MANNER_M2_eq_M_plus_P:
+      k = backpointer.trace.split;
+      backtrack(i, k, result, TYPE_M);
+      backtrack(k+1, j, result, TYPE_P);
+      break;
+    case MANNER_M_eq_M2:
+      backtrack(i, j, result, TYPE_M2);
+      break;
+    case MANNER_M_eq_M_plus_U:
+      backtrack(i, j-1, result, TYPE_M);
+      break;
+    case MANNER_M_eq_P:
+      backtrack(i, j, result, TYPE_P);
+      break;
+    case MANNER_C_eq_C_plus_U:
+      k = j - 1;
+      if (k != -1) backtrack(0, k, result, TYPE_C);
+      break;
+    case MANNER_C_eq_C_plus_P:
+      k = backpointer.trace.split;
+      if (k != -1) //lhuang
+        backtrack(0, k, result, TYPE_C);
+      backtrack(k+1, j, result, TYPE_P);
+      break;
+    default:  // MANNER_NONE or other cases
+      return -1;
+  }
+  return 0;
 }
 
 void BeamCKYParser::sample(int sample_number){
@@ -545,42 +549,43 @@ void BeamCKYParser::sample(int sample_number){
 
   visited = 0, uniq_visited = 0;
 
-    generator = default_random_engine(rand());
+  generator = default_random_engine(rand());
 
-    int all_nodes = seq_length; // C's
-    for (int j = 0; j < seq_length; j ++)
-      all_nodes += bestH[j].size() + bestP[j].size() + bestM[j].size() + bestM2[j].size() + bestMulti[j].size();
+  int all_nodes = seq_length; // C's
+  for (int j = 0; j < seq_length; j ++)
+    all_nodes += bestH[j].size() + bestP[j].size() + bestM[j].size() + bestM2[j].size() + bestMulti[j].size();
 
-    struct timeval starttime, endtime;
+  struct timeval starttime, endtime;
 
-    gettimeofday(&starttime, NULL);
-    
-    gettimeofday(&endtime, NULL);
-    double recover_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
-    fflush(stdout);
+  // gettimeofday(&starttime, NULL);
+  
+  // gettimeofday(&endtime, NULL);
+  // double recover_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
+  // fflush(stdout);
 
-    gettimeofday(&starttime, NULL);
-    // int count= 0;
-    for(int i = 0; i < sample_number; i++){
-      // count ++;
-      memset(result, '.', seq_length);
-      result[seq_length] = 0;
-      try {
-        int flag = backtrack(0, seq_length-1, result, TYPE_C);
-        if(flag == -1) i--;
-        else printf("%s\n", string(result).c_str());
-      }
-      catch (const out_of_range & err) {
-        i--; // NB: hit vector index out of range exception
-      }
-    } 
-    if(is_verbose){
-        gettimeofday(&endtime, NULL);
-        double sampling_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
-        printf("Sequence_length: %d recover time: %f secs Sample Number: %d Sample Time: %f secs  uniq_nodes: %d (%.2f%% of visits, %.2f%% of all nodes)\n",
-         seq_length, recover_time, sample_number, sampling_time, uniq_visited, uniq_visited * 100. / visited, uniq_visited * 100. / all_nodes);
+  gettimeofday(&starttime, NULL);
+  // int count= 0;
+  for(int i = 0; i < sample_number; i++){
+    // count ++;
+    memset(result, '.', seq_length);
+    result[seq_length] = 0;
+
+    try {
+      int flag = backtrack(0, seq_length-1, result, TYPE_C);
+      if(flag == -1) i--;
+      else printf("%s\n", string(result).c_str());
     }
-    fflush(stdout);
-    cleanup();    
-    return;
+    catch (const out_of_range & err) {
+      i--; // NB: hit vector index out of range exception
+    }
+  } 
+  if(is_verbose){
+      gettimeofday(&endtime, NULL);
+      double sampling_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
+      printf("Sequence_length: %d secs Sample Number: %d Sample Time: %f secs  uniq_nodes: %d (%.2f%% of visits, %.2f%% of all nodes)\n",
+       seq_length, sample_number, sampling_time, uniq_visited, uniq_visited * 100. / visited, uniq_visited * 100. / all_nodes);
+  }
+  fflush(stdout);
+  cleanup();    
+  return;
 }

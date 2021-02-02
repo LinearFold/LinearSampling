@@ -59,8 +59,8 @@ enum Manner {
   MANNER_M_eq_M2,               // 9: M = M2
   MANNER_M_eq_M_plus_U,         // 10: M = M + U
   MANNER_M_eq_P,                // 11: M = P
-  MANNER_C_eq_C_plus_U,     // 12: C = C + U
-  MANNER_C_eq_C_plus_P,     // 13: C = C + P
+  MANNER_C_eq_C_plus_U,         // 12: C = C + U
+  MANNER_C_eq_C_plus_P,         // 13: C = C + P
 };
 
 union TraceInfo {
