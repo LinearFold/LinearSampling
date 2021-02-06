@@ -1,6 +1,6 @@
-# LinearSampling: Linear-Time Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2
+# Improved and Linear-Time Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2
 
-This repository contains the C++ source code for the LinearSampling project, the first linear-time stochastic sampling algorithm/software for RNA secondary structures.
+This repository contains the C++ source code for the improved and linear-time stochastic sampling algorithm/software for RNA secondary structures.
 
 ## Dependencies
 gcc 4.8.5 or above; 
@@ -39,6 +39,10 @@ Prints out free energy of ensemble, sequence length, sample size and runtime inf
 --sharpturn
 ```
 Enable sharpturn. (default False)
+```
+--non_saving
+```
+Do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000. (default False)
 
 ## Example: Run Predict
 ```

@@ -26,7 +26,10 @@ def main():
     read_forest = '1' if FLAGS.read_forest else '0' 
 
     path = os.path.dirname(os.path.abspath(__file__))
-    cmd = ["%s/%s" % (path, ('bin/linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #saving_option
+    if int(beamsize) <= 0:
+        cmd = ["%s/%s" % (path, ('bin/exact_linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/exact_linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #saving_option
+    else:
+        cmd = ["%s/%s" % (path, ('bin/linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest] #saving_option
     subprocess.call(cmd, stdin=sys.stdin)
     
 if __name__ == '__main__':

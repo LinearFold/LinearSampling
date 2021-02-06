@@ -582,7 +582,7 @@ void BeamCKYParser::sample(int sample_number){
   if(is_verbose){
       gettimeofday(&endtime, NULL);
       double sampling_time = endtime.tv_sec - starttime.tv_sec + (endtime.tv_usec-starttime.tv_usec)/1000000.0;
-      printf("Sequence_length: %d secs Sample Number: %d Sample Time: %f secs  uniq_nodes: %d (%.2f%% of visits, %.2f%% of all nodes)\n",
+      printf("Sequence_length: %d Sample Number: %d Sample Time: %f secs  uniq_nodes: %d (%.2f%% of visits, %.2f%% of all nodes)\n",
        seq_length, sample_number, sampling_time, uniq_visited, uniq_visited * 100. / visited, uniq_visited * 100. / all_nodes);
   }
   fflush(stdout);
