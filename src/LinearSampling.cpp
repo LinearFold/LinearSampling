@@ -75,7 +75,9 @@ void BeamCKYParser::prepare(unsigned len) {
     bestMulti = new unordered_map<int, State>[seq_length];
     sortedP = new vector<int>[seq_length];
     nucs = new int[seq_length];
-    scores.reserve(seq_length); 
+    scores.reserve(seq_length);
+    next_pair.resize(seq_length * NOTON, -1);
+    prev_pair.resize(seq_length * NOTON, -1);
 }
 
 void BeamCKYParser::cleanup() {
@@ -86,8 +88,8 @@ void BeamCKYParser::cleanup() {
     delete[] bestM2;  
     delete[] bestMulti;  
     delete[] nucs;
-    delete[] next_pair;
-    delete[] prev_pair;
+    //delete[] next_pair;
+    //delete[] prev_pair;
     delete[] sortedP;
 #ifndef non_saving
     for (int i = 0; i < 5; i++)
@@ -106,11 +108,16 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
     for (int i = 0; i < seq_length; ++i)
         nucs[i] = GET_ACGU_NUM(seq[i]);
 
-    next_pair = new int[NOTON * seq_length]{-1};
-    prev_pair = new int[NOTON * seq_length]{-1};
+    //next_pair = new int[NOTON * seq_length]{-1};
+    //prev_pair = new int[NOTON * seq_length]{-1};
+    //vector<int> next_pair;
+    //vector<int> prev_pair;
+    //next_pair.resize(seq_length * NOTON, -1);
+    //prev_pair.resize(seq_length * NOTON, -1);
     {
         for (int nuci = 0; nuci < NOTON; ++nuci) {
-            int next = -1;
+	    //next_pair[nuci].resize(seq_length, -1);
+	    int next = -1;
             for (int j = seq_length-1; j >= 0; --j) { // going backward
                 next_pair[nuci * seq_length + j] = next;
                 if (_allowed_pairs[nuci][nucs[j]]) next = j;

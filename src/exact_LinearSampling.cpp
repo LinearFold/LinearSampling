@@ -70,10 +70,10 @@ void BeamCKYParser::prepare(unsigned len) {
     }
 
     sortedP = new vector<int>[seq_length];
-
     nucs = new int[seq_length];
-
     scores.reserve(seq_length); 
+    next_pair.resize(seq_length * NOTON, -1);
+    prev_pair.resize(seq_length * NOTON, -1);
 }
 
 void BeamCKYParser::cleanup() {
@@ -102,9 +102,6 @@ void BeamCKYParser::cleanup() {
     delete[] bestMulti;  
 
     delete[] nucs;
-    delete[] next_pair;
-    delete[] prev_pair;
-
     delete[] sortedP;
 
 #ifndef non_saving
@@ -124,8 +121,6 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
     for (int i = 0; i < seq_length; ++i)
         nucs[i] = GET_ACGU_NUM(seq[i]);
 
-    next_pair = new int[NOTON * seq_length]{-1};
-    prev_pair = new int[NOTON * seq_length]{-1};
     {
         for (int nuci = 0; nuci < NOTON; ++nuci) {
             int next = -1;

@@ -161,7 +161,7 @@ public:
 
 private:
   default_random_engine generator; // for choice
-  int *next_pair, *prev_pair;
+  vector<int> next_pair, prev_pair;
 
   void load_forest();
 

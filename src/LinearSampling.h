@@ -155,7 +155,9 @@ public:
 
 private:
   default_random_engine generator; // for choice
-  int *next_pair, *prev_pair;
+  //int *next_pair, *prev_pair;
+  vector<int> next_pair;
+  vector<int> prev_pair;
 
   void load_forest();
   void get_parentheses(char* result, string& seq);
