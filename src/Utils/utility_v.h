@@ -38,8 +38,8 @@ inline void v_init_tetra_hex_tri(std::string& seq, int seq_length, std::vector<i
         if (!(seq[i] == 'C' && seq[i+5] == 'G'))
             continue;
         char *ts;
-        if (ts=strstr(Tetraloops, seq.substr(i,6).c_str()))
-	  if_tetraloops[i] = (ts - Tetraloops)/7;
+        if ((ts=strstr(Tetraloops, seq.substr(i,6).c_str())))
+	       if_tetraloops[i] = (ts - Tetraloops)/7;
     }
 
 
@@ -49,7 +49,7 @@ inline void v_init_tetra_hex_tri(std::string& seq, int seq_length, std::vector<i
         if (!((seq[i] == 'C' && seq[i+4] == 'G') || (seq[i] == 'G' && seq[i+4] == 'C')))
             continue;
         char *ts;
-        if (ts=strstr(Triloops, seq.substr(i,5).c_str()))
+        if ((ts=strstr(Triloops, seq.substr(i,5).c_str())))
             if_triloops[i] = (ts - Triloops)/6;
     }
 
@@ -59,7 +59,7 @@ inline void v_init_tetra_hex_tri(std::string& seq, int seq_length, std::vector<i
         if (!(seq[i] == 'A' && seq[i+7] == 'U'))
             continue;
         char *ts;
-        if (ts=strstr(Hexaloops, seq.substr(i,8).c_str()))
+        if ((ts=strstr(Hexaloops, seq.substr(i,8).c_str())))
             if_hexaloops[i] = (ts - Hexaloops)/9;
     }
     return;
