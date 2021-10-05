@@ -2,6 +2,12 @@
 
 This repository contains the C++ source code for the improved and linear-time stochastic sampling algorithm/software for RNA secondary structures.
 
+[Improved and Linear-Time Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2](https://www.biorxiv.org/content/10.1101/2020.12.29.424617v2)
+
+He Zhang, Liang Zhang, Sizhen Li, David Mathews, Liang Huang*
+
+\* corresponding authors
+
 ## Dependencies
 gcc 4.8.5 or above; 
 python2.7
