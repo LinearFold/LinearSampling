@@ -1,8 +1,8 @@
-# Improved and Linear-Time Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2
+# LazySampling and LinearSampling: Fast Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2
 
-This repository contains the C++ source code for the improved and linear-time stochastic sampling algorithm/software for RNA secondary structures.
+This repository contains the C++ source code for LazySampling and LinearSampling stochastic sampling algorithms/softwares for RNA secondary structures.
 
-[Improved and Linear-Time Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2](https://www.biorxiv.org/content/10.1101/2020.12.29.424617v2). bioRxiv 2020.12.29.424617; doi: https://doi.org/10.1101/2020.12.29.424617
+[LazySampling and LinerSampling: Fast Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2](https://www.biorxiv.org/content/10.1101/2020.12.29.424617v2). bioRxiv 2020.12.29.424617; doi: https://doi.org/10.1101/2020.12.29.424617
 
 He Zhang, Liang Zhang, Sizhen Li, David Mathews, Liang Huang*
 
@@ -103,3 +103,11 @@ Free Energy of Ensemble: -32.14 kcal/mol
 Sequence_length: 72 recover time: 0.000000 secs Sample Number: 10 Sample Time: 0.000186 secs  uniq_nodes: 40 (11.33% of visits, 0.63% of all nodes)
 Total Time: 0.008407 secs
 ```
+
+## Data
+We list two sequences from RNAcentral that show the overflow issue of RNAsubopt.
+The ID and description of the sequences are:
+>URS00007C400D lncRNA from 10 species
+>URS00009C28A8_9606 Homo sapiens long non-coding RNA NONHSAT136811.2
+
+Please find the sequences in data/ folder
