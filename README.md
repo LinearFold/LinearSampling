@@ -107,7 +107,9 @@ Total Time: 0.008407 secs
 ## Data
 We list two sequences from RNAcentral that show the overflow issue of RNAsubopt.
 The ID and description of the sequences are:
->URS00007C400D lncRNA from 10 species
->URS00009C28A8_9606 Homo sapiens long non-coding RNA NONHSAT136811.2
 
-Please find the sequences in data/ folder
+URS00007C400D lncRNA from 10 species
+
+URS00009C28A8_9606 Homo sapiens long non-coding RNA NONHSAT136811.2
+
+Please also find the sequences in data/ folder.
