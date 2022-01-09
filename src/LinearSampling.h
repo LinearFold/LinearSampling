@@ -138,6 +138,7 @@ public:
   bool is_verbose;
   int sample_number;
   bool read_forest;
+  bool is_fasta;
 
   struct DecoderResult {
       State& viterbi;
@@ -148,7 +149,8 @@ public:
   BeamCKYParser(int beam_size=100,
                 bool nosharpturn=true,
                 bool is_verbose=false,
-	              bool read_forest=false);
+	              bool read_forest=false,
+                bool is_fasta=false);
 
   DecoderResult parse(string& seq);
   void sample(int sample_number);

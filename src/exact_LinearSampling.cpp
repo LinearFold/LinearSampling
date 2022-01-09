@@ -418,17 +418,22 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 BeamCKYParser::BeamCKYParser(int beam_size,
                              bool nosharpturn,
                              bool verbose,
-                 bool readforest)
+                             bool readforest,
+                             bool fasta)
     : beam(beam_size), 
       no_sharp_turn(nosharpturn), 
       is_verbose(verbose),
-      read_forest(readforest) {
+      read_forest(readforest),
+      is_fasta(fasta) {
     initialize();
 }
 
-
-
-
+// trim from end (in place)
+static inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
 // -------------------------------------------------------------
 
 int main(int argc, char** argv){
@@ -444,13 +449,15 @@ int main(int argc, char** argv){
     bool is_verbose = false;
     int sample_number = 10;
     bool read_forest;
+    bool fasta = false;
 
     if (argc > 1) {
         beamsize = atoi(argv[1]);
         sharpturn = atoi(argv[2]) == 1;
         is_verbose = atoi(argv[3]) == 1;
         sample_number = atoi(argv[4]);
-    read_forest = atoi(argv[5]) == 1;
+        read_forest = atoi(argv[5]) == 1;
+        fasta = atoi(argv[6]) == 1;
     }
 
     // variables for decoding
@@ -460,34 +467,53 @@ int main(int argc, char** argv){
     double total_time = .0;
 
     {
-        for (string seq; getline(cin, seq);) {
-            if (seq.length() == 0)
-                continue;
-
-            if (seq[0] == ';' || seq[0] == '>') {
-                printf("%s\n", seq.c_str());
-                continue;
+        string rna_seq;
+        vector<string> rna_seq_list, rna_name_list;
+        if (fasta){
+            for (string seq; getline(cin, seq);){
+                if (seq.empty()) continue;
+                else if (seq[0] == '>' or seq[0] == ';'){
+                    rna_name_list.push_back(seq); // sequence name
+                    if (!rna_seq.empty())
+                        rna_seq_list.push_back(rna_seq);
+                    rna_seq.clear();
+                    continue;
+                }else{
+                    rtrim(seq);
+                    rna_seq += seq;
+                }
             }
-
-            if (!isalpha(seq[0])){
-                printf("Unrecognized sequence: %s\n", seq.c_str());
-                continue;
+            if (!rna_seq.empty())
+                rna_seq_list.push_back(rna_seq);
+        }else{
+            for (string seq; getline(cin, seq);){
+                if (seq.empty()) continue;
+                if (!isalpha(seq[0])){
+                    printf("Unrecognized sequence: %s\n", seq.c_str());
+                    continue;
+                }
+                rna_seq_list.push_back(seq);
             }
+        }
 
-            printf("%s\n", seq.c_str());
+        for(int i = 0; i < rna_seq_list.size(); i++){
+            if (rna_name_list.size() > i)
+                printf("%s\n", rna_name_list[i].c_str());
+            rna_seq = rna_seq_list[i];
+
+            printf("%s\n", rna_seq.c_str());
             
             // convert to uppercase
-            transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
+            transform(rna_seq.begin(), rna_seq.end(), rna_seq.begin(), ::toupper);
 
             // convert T to U
-            replace(seq.begin(), seq.end(), 'T', 'U');
+            replace(rna_seq.begin(), rna_seq.end(), 'T', 'U');
 
             BeamCKYParser parser(beamsize, !sharpturn, is_verbose, read_forest);
 
-            parser.parse(seq); // inside
+            parser.parse(rna_seq); // inside
 
             parser.sample(sample_number);
-
         }
     }
 

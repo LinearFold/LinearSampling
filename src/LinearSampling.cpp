@@ -410,11 +410,13 @@ void BeamCKYParser::load_forest() {
 BeamCKYParser::BeamCKYParser(int beam_size,
                              bool nosharpturn,
                              bool verbose,
-                             bool readforest)
+                             bool readforest,
+                             bool fasta)
     : beam(beam_size), 
       no_sharp_turn(nosharpturn), 
       is_verbose(verbose),
-      read_forest(readforest) {
+      read_forest(readforest),
+      is_fasta(fasta) {
     initialize();
 }
 
@@ -439,6 +441,7 @@ int main(int argc, char** argv){
     bool is_verbose = false;
     int sample_number = 10;
     bool read_forest;
+    bool fasta = false;
 
     if (argc > 1) {
         beamsize = atoi(argv[1]);
@@ -446,6 +449,7 @@ int main(int argc, char** argv){
         is_verbose = atoi(argv[3]) == 1;
         sample_number = atoi(argv[4]);
         read_forest = atoi(argv[5]) == 1;
+        fasta = atoi(argv[6]) == 1;
     }
 
     // variables for decoding
@@ -457,21 +461,32 @@ int main(int argc, char** argv){
     {
         string rna_seq;
         vector<string> rna_seq_list, rna_name_list;
-        for (string seq; getline(cin, seq);){
-            if (seq.empty()) continue;
-            else if (seq[0] == '>' or seq[0] == ';'){
-                rna_name_list.push_back(seq); // sequence name
-                if (!rna_seq.empty())
-                    rna_seq_list.push_back(rna_seq);
-                rna_seq.clear();
-                continue;
-            }else{
-                rtrim(seq);
-                rna_seq += seq;
+        if (fasta){
+            for (string seq; getline(cin, seq);){
+                if (seq.empty()) continue;
+                else if (seq[0] == '>' or seq[0] == ';'){
+                    rna_name_list.push_back(seq); // sequence name
+                    if (!rna_seq.empty())
+                        rna_seq_list.push_back(rna_seq);
+                    rna_seq.clear();
+                    continue;
+                }else{
+                    rtrim(seq);
+                    rna_seq += seq;
+                }
+            }
+            if (!rna_seq.empty())
+                rna_seq_list.push_back(rna_seq);
+        }else{
+            for (string seq; getline(cin, seq);){
+                if (seq.empty()) continue;
+                if (!isalpha(seq[0])){
+                    printf("Unrecognized sequence: %s\n", seq.c_str());
+                    continue;
+                }
+                rna_seq_list.push_back(seq);
             }
         }
-        if (!rna_seq.empty())
-            rna_seq_list.push_back(rna_seq);
 
         for(int i = 0; i < rna_seq_list.size(); i++){
             if (rna_name_list.size() > i)

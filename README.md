@@ -36,10 +36,15 @@ OPTIONS:
 ```
 The sample size (default 10).
 ```
--b BEAM_SIZE
+--beamsize BEAM_SIZE or -b BEAM_SIZE
 ```
 The beam size (default 100). Use 0 for infinite beam (exact sampling).
 ```
+--fasta
+```
+Specify that the input is in fasta format. (default FALSE)
+```
+
 --verbose
 ```
 Prints out free energy of ensemble, sequence length, sample size and runtime information. (default False)
