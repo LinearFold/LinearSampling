@@ -12,7 +12,7 @@ def setgflags():
     flags.DEFINE_boolean('sharpturn', False, "enable sharp turn in prediction, (DEFAULT=FALSE)")
     flags.DEFINE_boolean('verbose', False, "print out energy of each loop in the structure, (DEFAULT=FALSE)")
     flags.DEFINE_integer('sample_number', 10, "sample number, (DEFAULT=10)", short_name='k') 
-    flags.DEFINE_string('readforest', '', "read state forest from file", short_name="f")
+    flags.DEFINE_string('readforest', '', "read a pre-calculated state forest from a file", short_name="f")
     flags.DEFINE_boolean('non_saving', False, "non_saving (non): do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000; \
                                                 (DEFAULT=False)")
     flags.DEFINE_boolean('fasta', False, "input is in fasta format") # FASTA format

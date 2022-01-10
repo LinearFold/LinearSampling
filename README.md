@@ -59,7 +59,7 @@ Do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000. (defau
 ```
 --readforest FILE_NAME or -f FILE_NAME
 ```
-Read a pre-calculated state forest from file
+Read a pre-calculated state forest from a file
 
 
 ## Example: Run Predict
