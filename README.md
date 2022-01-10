@@ -57,7 +57,7 @@ Enable sharpturn. (default False)
 ```
 Do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000. (default False)
 ```
---read_forest
+--readforest FILE_NAME or -f FILE_NAME
 ```
 Read a pre-calculated state forest from file
 
