@@ -56,6 +56,11 @@ Enable sharpturn. (default False)
 --non_saving
 ```
 Do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000. (default False)
+```
+--read_forest
+```
+Read a pre-calculated state forest from file
+
 
 ## Example: Run Predict
 ```
@@ -107,6 +112,24 @@ Free Energy of Ensemble: -32.14 kcal/mol
 ((((((((.((((.......))))((((((((...))))))))..((((.......))))))))))))....
 Sequence_length: 72 recover time: 0.000000 secs Sample Number: 10 Sample Time: 0.000186 secs  uniq_nodes: 40 (11.33% of visits, 0.63% of all nodes)
 Total Time: 0.008407 secs
+```
+
+## Example: Load A Pre-calculated State Forest
+```
+./linearsampling -f d
+umpforest_example
+GUUUUUAUCUUACACACGCUUGUGUAAGAUAGUUA
+forest of 89 nodes loaded in 0.0 secs.
+.....(((((((((((....)))))))))))....
+....((((((((((((....))))))))))))...
+....((((((((((((....))))))))))))...
+....(..(((((((((....)))))))))..)...
+....((((((((((((....))))))))))))...
+....((((((((((((....))))))))))))...
+....((((((((((((....))))))))))))...
+.....(((((((((((....)))))))))))....
+....((((((((((((....))))))))))))...
+....((((((((((((....))))))))))))...
 ```
 
 ## Data
