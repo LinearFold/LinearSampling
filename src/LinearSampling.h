@@ -137,7 +137,7 @@ public:
   bool no_sharp_turn;
   bool is_verbose;
   int sample_number;
-  bool read_forest;
+  string read_forest;
   bool is_fasta;
 
   struct DecoderResult {
@@ -149,7 +149,7 @@ public:
   BeamCKYParser(int beam_size=100,
                 bool nosharpturn=true,
                 bool is_verbose=false,
-	              bool read_forest=false,
+	              string read_forest="",
                 bool is_fasta=false);
 
   DecoderResult parse(string& seq);

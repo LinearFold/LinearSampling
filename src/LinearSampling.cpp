@@ -134,8 +134,7 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
 #ifdef SPECIAL_HP
     v_init_tetra_hex_tri(seq, seq_length, if_tetraloops, if_hexaloops, if_triloops);
 #endif
-
-    if (!read_forest)
+    if (read_forest.empty())
     {
         if(seq_length > 0) bestC[0].alpha = 0.0;
         if(seq_length > 1) bestC[1].alpha = 0.0;
@@ -363,7 +362,9 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
             }
         }  // end of for-loo j
     } // if there is no forest file
-    else load_forest(); // read forest
+    else {
+        load_forest();// read forest
+    } 
 
     State& viterbi = bestC[seq_length-1];
 
@@ -379,7 +380,7 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
     return {viterbi, 0, parse_elapsed_time};
 }
 
-void BeamCKYParser::load_forest() {  
+void BeamCKYParser::load_forest() {
     string line, type;
     int i, j;
     unordered_map<string, unordered_map<int, State> * > states;
@@ -392,14 +393,37 @@ void BeamCKYParser::load_forest() {
 
     gettimeofday(&forest_starttime, NULL);
     int num_nodes = 0;
-    while (true) {
-        if (!getline(cin, line)) break;
-        num_nodes ++;
-        istringstream iss(line);    
-        iss >> type;
-        if (type == "E") iss >> j >> bestC[j-1].alpha;
-        else  iss >> i >> j >> states[type][j-1][i-1].alpha; // P M M2 Multi
+    bool first_line = true;
+
+    std::ifstream forest;
+    forest.open(read_forest);
+    if (forest.is_open()) {
+        for (std::string line; getline(forest, line);){
+            if (first_line){
+                first_line = false;
+                continue;
+            }
+            num_nodes ++;
+            istringstream iss(line);    
+            iss >> type;
+            if (type == "E") iss >> j >> bestC[j-1].alpha;
+            else  iss >> i >> j >> states[type][j-1][i-1].alpha; // P M M2 Multi
+
+        }
     }
+
+    // while (true) {
+    //     if (!getline(cin, line)) break;
+    //     if (first_line){
+    //         first_line = false;
+    //         continue;
+    //     }
+    //     num_nodes ++;
+    //     istringstream iss(line);    
+    //     iss >> type;
+    //     if (type == "E") iss >> j >> bestC[j-1].alpha;
+    //     else  iss >> i >> j >> states[type][j-1][i-1].alpha; // P M M2 Multi
+    // }
 
     gettimeofday(&forest_endtime, NULL);
     double forest_elapsed_time = forest_endtime.tv_sec - forest_starttime.tv_sec + (forest_endtime.tv_usec-forest_starttime.tv_usec)/1000000.0;
@@ -407,10 +431,30 @@ void BeamCKYParser::load_forest() {
     printf("forest of %d nodes loaded in %.1f secs.\n", num_nodes, forest_elapsed_time);
 }
 
+
+
+string read_first_line(string& path){
+    std::ifstream sequence;
+    sequence.open(path);
+    if (sequence.is_open()) {
+        for (std::string line; getline(sequence, line);){
+            return line;
+        }
+        assert(false);
+        return "";
+    }
+    assert(false);
+    return "";
+}
+
+
+
+
+
 BeamCKYParser::BeamCKYParser(int beam_size,
                              bool nosharpturn,
                              bool verbose,
-                             bool readforest,
+                             string readforest,
                              bool fasta)
     : beam(beam_size), 
       no_sharp_turn(nosharpturn), 
@@ -440,7 +484,7 @@ int main(int argc, char** argv){
     bool sharpturn = false;
     bool is_verbose = false;
     int sample_number = 10;
-    bool read_forest;
+    string read_forest;
     bool fasta = false;
 
     if (argc > 1) {
@@ -448,10 +492,14 @@ int main(int argc, char** argv){
         sharpturn = atoi(argv[2]) == 1;
         is_verbose = atoi(argv[3]) == 1;
         sample_number = atoi(argv[4]);
-        read_forest = atoi(argv[5]) == 1;
+        read_forest = argv[5];
         fasta = atoi(argv[6]) == 1;
     }
 
+    if (read_forest.size() and fasta){
+        printf("read forest and fasta modes conflict\n");
+        exit(1);
+    }
     // variables for decoding
     int num=0, total_len = 0;
     unsigned long long total_states = 0;
@@ -478,13 +526,19 @@ int main(int argc, char** argv){
             if (!rna_seq.empty())
                 rna_seq_list.push_back(rna_seq);
         }else{
-            for (string seq; getline(cin, seq);){
-                if (seq.empty()) continue;
-                if (!isalpha(seq[0])){
-                    printf("Unrecognized sequence: %s\n", seq.c_str());
-                    continue;
-                }
+            if (read_forest.size()){
+                string seq = read_first_line(read_forest);
                 rna_seq_list.push_back(seq);
+            }
+            else{
+                for (string seq; getline(cin, seq);){
+                    if (seq.empty()) continue;
+                    if (!isalpha(seq[0])){
+                        printf("Unrecognized sequence: %s\n", seq.c_str());
+                        continue;
+                    }
+                    rna_seq_list.push_back(seq);
+                }
             }
         }
 

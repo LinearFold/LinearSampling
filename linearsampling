@@ -12,7 +12,7 @@ def setgflags():
     flags.DEFINE_boolean('sharpturn', False, "enable sharp turn in prediction, (DEFAULT=FALSE)")
     flags.DEFINE_boolean('verbose', False, "print out energy of each loop in the structure, (DEFAULT=FALSE)")
     flags.DEFINE_integer('sample_number', 10, "sample number, (DEFAULT=10)", short_name='k') 
-    flags.DEFINE_boolean('read_forest', False, "read forest from STDIN (DEFAULT=FALSE)", short_name="f")
+    flags.DEFINE_string('read_forest', '', "read forest from file (DEFAULT=FALSE)", short_name="f")
     flags.DEFINE_boolean('non_saving', False, "non_saving (non): do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000; \
                                                 (DEFAULT=False)")
     flags.DEFINE_boolean('fasta', False, "input is in fasta format") # FASTA format
@@ -23,11 +23,11 @@ def main():
     is_sharpturn = '1' if FLAGS.sharpturn else '0'
     is_verbose = '1' if FLAGS.verbose else '0'
     sample_number = str(FLAGS.sample_number)
-    read_forest = '1' if FLAGS.read_forest else '0' 
+    read_forest = str(FLAGS.read_forest)
     is_fasta = '1' if FLAGS.fasta else '0' 
 
     path = os.path.dirname(os.path.abspath(__file__))
-    if int(beamsize) <= 0:
+    if int(beamsize) <= 0 and read_forest == '':
         cmd = ["%s/%s" % (path, ('bin/exact_linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/exact_linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest, is_fasta] #saving_option
     else:
         cmd = ["%s/%s" % (path, ('bin/linearsampling_lazysaving' if not FLAGS.non_saving else 'bin/linearsampling_nonsaving')), beamsize, is_sharpturn, is_verbose, sample_number, read_forest, is_fasta] #saving_option
