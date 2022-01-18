@@ -132,11 +132,7 @@ forest of 89 nodes loaded in 0.0 secs.
 ```
 
 ## Data
-We list two sequences from RNAcentral that show the overflow issue of RNAsubopt.
-The ID and description of the sequences are:
+We list 36 sequences from RNAcentral for runtime and memory usage benchmark, 
+including 4 sequences that show the overflow issue of RNAsubopt.
 
-URS00007C400D lncRNA from 10 species
-
-URS00009C28A8_9606 Homo sapiens long non-coding RNA NONHSAT136811.2
-
-Please also find the sequences in data/ folder.
+Please find the sequences in data/ folder.
