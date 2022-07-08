@@ -270,6 +270,8 @@ BeamCKYParser::DecoderResult BeamCKYParser::parse(string& seq) {
                                 // helix
                                 int score_single = -v_score_single(p,q,i,j, nucp, nucp1, nucq_1, nucq,
                                                             nuci_1, nuci, nucj, nucj1);
+                                 if (use_shape)
+                                    score_single += -(pseudo_energy_stack[p] + pseudo_energy_stack[i] + pseudo_energy_stack[j] + pseudo_energy_stack[q]);
                                 Fast_LogPlusEquals(bestP[q][p], state + score_single/kT);
                             } else {
                                 // single branch
@@ -419,6 +421,7 @@ BeamCKYParser::BeamCKYParser(int beam_size,
                              bool nosharpturn,
                              bool verbose,
                              bool readforest,
+                             string shape_file_path,
                              bool fasta)
     : beam(beam_size), 
       no_sharp_turn(nosharpturn), 
@@ -426,6 +429,40 @@ BeamCKYParser::BeamCKYParser(int beam_size,
       read_forest(readforest),
       is_fasta(fasta) {
     initialize();
+
+    if (shape_file_path != "" ){
+        use_shape = true;
+        int position;
+        string data;
+
+        double temp_after_mb_shape;
+
+        ifstream in(shape_file_path);
+
+        if (!in.good()){
+            cout<<"Reading SHAPE file error!"<<endl;
+            assert(false);
+        }
+
+        // actually, we can combine the SHAPE_data and the energy_stack together
+        while (!(in >> position >> data).fail()) {
+            if (isdigit(int(data[0])) == 0){
+                SHAPE_data.push_back(double((-1.000000)));
+            }
+
+            else {
+                SHAPE_data.push_back(stod(data));
+            }
+        }
+
+        for (int i = 0; i<SHAPE_data.size(); i++){
+            temp_after_mb_shape = SHAPE_data[i] < 0 ? 0. : (m * log(SHAPE_data[i] + 1) + b);
+
+            pseudo_energy_stack.push_back((int)roundf(temp_after_mb_shape * 100.));
+
+            assert(pseudo_energy_stack.size() == i + 1 );
+        }
+    }
 }
 
 // trim from end (in place)
@@ -450,6 +487,8 @@ int main(int argc, char** argv){
     bool read_forest;
     bool fasta = false;
     string input_file;
+    // SHAPE
+    string shape_file_path = "";
 
     if (argc > 1) {
         beamsize = atoi(argv[1]);
@@ -459,6 +498,7 @@ int main(int argc, char** argv){
         read_forest = atoi(argv[5]) == 1;
         fasta = atoi(argv[6]) == 1;
         input_file = argv[7];
+        shape_file_path = argv[8];
     }
 
     // variables for decoding
@@ -521,7 +561,7 @@ int main(int argc, char** argv){
             // convert T to U
             replace(rna_seq.begin(), rna_seq.end(), 'T', 'U');
 
-            BeamCKYParser parser(beamsize, !sharpturn, is_verbose, read_forest);
+            BeamCKYParser parser(beamsize, !sharpturn, is_verbose, read_forest, shape_file_path);
 
             parser.parse(rna_seq); // inside
 

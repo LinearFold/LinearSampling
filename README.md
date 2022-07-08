@@ -64,9 +64,15 @@ Do not save any hyperedges during sampling, i.e., like RNAsubopt -p 1000. (defau
 --readforest FILE_NAME or -f FILE_NAME
 ```
 Read a pre-calculated state forest from a file
+```
+--shape FILE_NAME
+```
+use SHAPE reactivity data
+Please refer to this link for the SHAPE data format:
+https://rna.urmc.rochester.edu/Text/File_Formats.html#SHAPE
 
 
-## Example: Run Predict
+## Example: Run LinearSampling
 ```
 cat testseq | ./linearsampling -k 5
 UGAGUUCUCGAUCUCUAAAAUCG
@@ -118,7 +124,7 @@ Sequence_length: 72 recover time: 0.000000 secs Sample Number: 10 Sample Time: 0
 Total Time: 0.008407 secs
 ```
 
-## Example: Load A Pre-calculated State Forest
+## Example: Run LinearSampling with A Pre-calculated State Forest
 ```
 ./linearsampling -f dumpforest_example
 GUUUUUAUCUUACACACGCUUGUGUAAGAUAGUUA
@@ -133,6 +139,23 @@ forest of 89 nodes loaded in 0.0 secs.
 ....((((((((((((....))))))))))))...
 ....((((((((((((....))))))))))))...
 ....((((((((((((....))))))))))))...
+```
+
+## Example: Run LinearSampling with SHAPE Data
+```
+cat example.seq | ./linearsampling --shape example.shape
+GCCUGGUGACCAUAGCGAGUCGGUACCACCCCUUCCCAUCCCGAACAGGACCGUGAAACGACUCCGCGCCGAUGAUAGUGCGGAUUCCCGUGUGAAAGUAGGUCAUCGCCAGGC
+((((((........(((((((.((........((((..(((......)))..).))))))))).)))..(((((((..(((...(((......))).))).)))))))))))))
+(((((((.......((((((((.(............(((((......)))...)).).)))))).))...((((((..(((((....))))...)......)))))))))))))
+((((((........((((((((.(..(((....(((...........)))..))).).))))).)))..(((((((..(((...(((......))).))).)))))))))))))
+((((((........((((((((....(((.........(((......)))..)))...)))))).))..(((((((.(.((((....)))).)........)))))))))))))
+((((((........((((((((.(((............(((......)))..)))...))))).)))..(((((((..(((((....))))).........)))))))))))))
+((((((........(((((((.((..((..........(((......)))...))..))))))).))..(((((((.((((((....)))))......)..)))))))))))))
+((((((........((((((((....(((....(((...........)))..)))...)))))).))..(((((((..(((...((((...).))).))).)))))))))))))
+((((((........(((((((.((..(((.........(((......)))..)))..))))))).))..(((((((..(((((....))))).........)))))))))))))
+((((((........(((((((.((........((..(((((......)))...))))))))))).))..((((((((..((((....)))).))........))))))))))))
+((((((........(((((((.((..(((.....((...........))...)))..))))))).))..(((((((..(((...(((......))).))).)))))))))))))
+
 ```
 
 ## Data

@@ -146,6 +146,11 @@ public:
   bool read_forest;
   bool is_fasta;
 
+  // SHAPE
+  bool use_shape = false;
+  double m = 1.8;
+  double b = -0.6;
+
   struct DecoderResult {
       node_value_type & viterbi;
       unsigned long num_states;
@@ -156,6 +161,7 @@ public:
                 bool nosharpturn=true,
                 bool is_verbose=false,
 	              bool read_forest=false,
+                string shape_file_path="",
                 bool is_fasta=false);
 
   DecoderResult parse(string& seq);
@@ -207,6 +213,10 @@ private:
 
   int visited = 0, uniq_visited = 0;
   // int saving_option = SAVING_FULL;
+
+  // SHAPE
+  vector<double> SHAPE_data;
+  vector<int> pseudo_energy_stack;
 };
 
 #endif //FASTCKY_BEAMCKYPAR_H
