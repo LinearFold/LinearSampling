@@ -440,7 +440,6 @@ int main(int argc, char** argv){
 
     srand(std::chrono::system_clock::now().time_since_epoch().count()); // lhuang: not time(NULL)!
 
-
     struct timeval total_starttime, total_endtime;
     gettimeofday(&total_starttime, NULL);
 
@@ -450,6 +449,7 @@ int main(int argc, char** argv){
     int sample_number = 10;
     bool read_forest;
     bool fasta = false;
+    string input_file;
 
     if (argc > 1) {
         beamsize = atoi(argv[1]);
@@ -458,6 +458,7 @@ int main(int argc, char** argv){
         sample_number = atoi(argv[4]);
         read_forest = atoi(argv[5]) == 1;
         fasta = atoi(argv[6]) == 1;
+        input_file = argv[7];
     }
 
     // variables for decoding
@@ -467,10 +468,21 @@ int main(int argc, char** argv){
     double total_time = .0;
 
     {
+        ifstream infile(input_file);
+        vector<string> input_lines;
+        string line;
+        if(input_file.size()){
+            while (getline(infile, line))
+                input_lines.push_back(line);
+        }else{
+            while (getline(cin, line))
+                input_lines.push_back(line);
+        }
+
         string rna_seq;
         vector<string> rna_seq_list, rna_name_list;
         if (fasta){
-            for (string seq; getline(cin, seq);){
+            for (string& seq : input_lines){
                 if (seq.empty()) continue;
                 else if (seq[0] == '>' or seq[0] == ';'){
                     rna_name_list.push_back(seq); // sequence name
@@ -486,7 +498,7 @@ int main(int argc, char** argv){
             if (!rna_seq.empty())
                 rna_seq_list.push_back(rna_seq);
         }else{
-            for (string seq; getline(cin, seq);){
+            for (string& seq : input_lines){
                 if (seq.empty()) continue;
                 if (!isalpha(seq[0])){
                     printf("Unrecognized sequence: %s\n", seq.c_str());

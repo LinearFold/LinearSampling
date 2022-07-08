@@ -486,7 +486,8 @@ int main(int argc, char** argv){
     int sample_number = 10;
     string read_forest;
     bool fasta = false;
-
+    string input_file;
+    
     if (argc > 1) {
         beamsize = atoi(argv[1]);
         sharpturn = atoi(argv[2]) == 1;
@@ -494,6 +495,7 @@ int main(int argc, char** argv){
         sample_number = atoi(argv[4]);
         read_forest = argv[5];
         fasta = atoi(argv[6]) == 1;
+        input_file = argv[7];
     }
 
     if (read_forest.size() and fasta){
@@ -506,11 +508,25 @@ int main(int argc, char** argv){
     double total_score = .0;
     double total_time = .0;
 
+    // if(input_file.size())
+
     {
+        ifstream infile(input_file);
+        vector<string> input_lines;
+        string line;
+        if(input_file.size()){
+            while (getline(infile, line))
+                input_lines.push_back(line);
+        }else{
+            while (getline(cin, line))
+                input_lines.push_back(line);
+        }
+
         string rna_seq;
         vector<string> rna_seq_list, rna_name_list;
         if (fasta){
-            for (string seq; getline(cin, seq);){
+            // for (string seq; getline(cin, seq);){
+            for (string& seq : input_lines){
                 if (seq.empty()) continue;
                 else if (seq[0] == '>' or seq[0] == ';'){
                     rna_name_list.push_back(seq); // sequence name
@@ -531,7 +547,7 @@ int main(int argc, char** argv){
                 rna_seq_list.push_back(seq);
             }
             else{
-                for (string seq; getline(cin, seq);){
+                for (string& seq : input_lines){
                     if (seq.empty()) continue;
                     if (!isalpha(seq[0])){
                         printf("Unrecognized sequence: %s\n", seq.c_str());

@@ -1892,7 +1892,11 @@ class HelpFlag(BooleanFlag):
     if arg:
       doc = sys.modules["__main__"].__doc__
       flags = str(FLAGS)
-      print doc or ("\nUSAGE: echo SEQUENCE | %s [flags]\n       or\n       echo FASTA_FILE | %s [flags]\n" % (sys.argv[0], sys.argv[0]))
+      print doc or ("\nUSAGE: echo SEQUENCE | %s [flags]\n \
+      or\n \
+      echo INPUT_FILE | %s [flags]\n \
+      or\n \
+      %s -i INPUT_FILE [flags]\n" % (sys.argv[0], sys.argv[0], sys.argv[0]))
       if flags:
         print "flags:"
         print flags

@@ -26,7 +26,11 @@ echo SEQUENCE | ./linearsampling [OPTIONS]
 
 OR
 
-cat SEQ_OR_FASTA_FILE | ./linearsampling [OPTIONS]
+cat INPUT_FILE | ./linearsampling [OPTIONS]
+
+OR
+
+./linearsampling -i INPUT_FILE [OPTIONS]
 ```
 Both FASTA format and pure-sequence format are supported for input.
 
