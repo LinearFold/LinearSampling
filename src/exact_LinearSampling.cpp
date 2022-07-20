@@ -512,11 +512,17 @@ int main(int argc, char** argv){
         vector<string> input_lines;
         string line;
         if(input_file.size()){
-            while (getline(infile, line))
+            while (getline(infile, line)){
+                if (line.empty()) continue;
+                if (line[0] == '>' or line[0] == ';') continue;
                 input_lines.push_back(line);
+            }
         }else{
-            while (getline(cin, line))
+            while (getline(cin, line)){
+                if (line.empty()) continue;
+                if (line[0] == '>' or line[0] == ';') continue;
                 input_lines.push_back(line);
+            }
         }
 
         string rna_seq;
