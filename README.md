@@ -12,7 +12,7 @@ Web server: [http://linearfold.org/sampling](http://linearfold.org/sampling)
 
 ## Dependencies
 gcc 4.8.5 or above; 
-python2.7
+python3
 
 ## To Compile
 ```
