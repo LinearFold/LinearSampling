@@ -2,9 +2,9 @@
 
 This repository contains the C++ source code for LazySampling and LinearSampling stochastic sampling algorithms/softwares for RNA secondary structures.
 
-[LazySampling and LinerSampling: Fast Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2](https://www.biorxiv.org/content/10.1101/2020.12.29.424617v2). bioRxiv 2020.12.29.424617; doi: https://doi.org/10.1101/2020.12.29.424617
+[LazySampling and LinerSampling: Fast Stochastic Sampling of RNA Secondary Structure with Applications to SARS-CoV-2](https://academic.oup.com/nar/article/51/2/e7/6833303) Nucleic Acids Research, 51(2), e7-e7; doi: https://doi.org/10.1093/nar/gkac1029
 
-He Zhang, Liang Zhang, Sizhen Li, David Mathews, Liang Huang*
+He Zhang, Sizhen Li, Liang Zhang, David Mathews, Liang Huang*
 
 \* corresponding authors
 
